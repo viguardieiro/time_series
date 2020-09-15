@@ -1,0 +1,115 @@
+---
+title: "ARMAmodel"
+output: html_document
+---
+
+```{r}
+library(tseries)
+library(zoo)
+load("dados_arma_4.RData")
+
+plot_acf_pacf <- function(series){
+  par(mfrow = c(2, 1))
+  acf(series, main = "ACF")
+  pacf(series, main = "PACF")
+}
+
+plot_res <- function(res){
+  plot(res, main = "Residuals of model",
+       ylab = "Residual", type = "p")
+  abline(0, 0)
+}
+```
+
+# Modelos ARMA
+
+Com 9 séries temporais, iremos avaliar cada uma delas e identificar se ela é gerada por um modelo AR(p), um modelo MA(q) ou um modelo ARMA(p, q). Em todas as diferentes séreis iremos inicialmente visualizar a série, a função de autocorrelação e a função de autocorrelação parcial.
+
+## Série 1
+
+```{r}
+plot(X[[1]], main = "Series 1", ylab = "Z_t")
+```
+
+```{r}
+plot_acf_pacf(X[[1]])
+```
+
+Vemos que a ACF decresce de forma mais gradual, enquanto a PACF possui valores significativos para o lag 1 e 2, e depois se tornam valores pequenos, o que traz o indicativo de ser um modelo AR(2).
+
+Vamos tentar fitar um modelo AR(2).
+```{r}
+model1 <- arma(X[[1]], order = c(2, 0))
+summary(model1)
+```
+Vamos visualizar inicialmente o modelo real e o previsto, e em sequência, o plot de resíduos.
+```{r}
+plot(X[[1]], main = "Model for Series 1", ylab = "Z_t")
+lines(model1$fitted.values, col = "red")
+```
+
+```{r}
+plot_res(model1$residuals)
+```
+
+O modelo parece se adequar bem aos dados e também os resíduos não apresentam um padrão de comportamento.
+
+## Série 2
+
+```{r}
+plot(X[[2]], main = "Series 2", ylab = "Z_t")
+```
+
+
+```{r}
+plot_acf_pacf(X[[2]])
+```
+
+Agora, visualizamos um situação inversa, o lag 2 é significativo na ACF e nos demais não, e na PACF o decrescimento é gradual, o que nos faz pensar se tratar de um modelo MA(2).
+
+```{r}
+model2 <- arma(X[[2]], order = c(0, 2))
+summary(model2)
+```
+
+O modelo se encaixou bem, vamos comparar a previsão e o real, e em sequência, o plot de resíduos.
+
+```{r}
+plot(X[[2]], main = "Model for Series 2", ylab = "Z_t")
+lines(model2$fitted.values, col = "red")
+```
+
+```{r}
+plot_res(model2$residuals)
+```
+
+O modelo aparentemente se adequa bem a sazonalidade da série real, no entanto, não conseguimos capturar os picos extremos como ocorrem na série real, e os resíduos também se distribuem uniformemente ao longo da série.
+
+## Série 3
+
+```{r}
+plot(X[[3]], main = "Series 3", ylab = "Z_t")
+```
+
+```{r}
+plot_acf_pacf(X[[3]])
+```
+
+Nesse modelo existe um comportamento diferente dos demais, tanto a ACF quanto a PACF são praticamente nulas para todos os valores, menos para a ACF de 0, o que indica que as amostras não possuem covariância, se comportando como um ruído branco. Vamos verificar a média e a variância da série.
+
+```{r}
+data.frame(mean = mean(X[[3]]), variance = var(X[[3]])*296/297)
+```
+
+Vemos que o modelo se comporta como um ruído branco, isto é, $a_t$ com $E(a_t)=0$ e $Var(a_t) = 1$. Se nós gerarmos $297$ amostras de $a_t$ e visualizarmos tanto o modelo e predição, quanto o residual, teremos:
+
+```{r}
+model3 <- rnorm(297)
+plot(X[[3]], main = "Model for Series 3", ylab = "Z_t")
+lines(model3, col = "red")
+```
+
+```{r}
+model3$residual <- X[[3]] - model3
+plot_res(model3$residual)
+```
