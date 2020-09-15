@@ -1,7 +1,0 @@
-"0","predictions <- NA"
-"0","for(i in seq_along(trainSales)){"
-"0","  fit <- holt(trainSales[[i]], beta = 0.06, h = 1)"
-"0","  predictions[i] <- fit$mean[1]"
-"0","}"
-"0","plot(fit, xlim = c(as.yearmon(""2009-01-01""), endDate), "
-"0","     xlab = ""Data"", ylab = ""Sales"", ylim = c(0, 2800))"

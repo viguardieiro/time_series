@@ -1,6 +1,0 @@
-"0","data <- read.csv(""norway_new_car_sales_by_make.csv"")"
-"0","car_brand <- ""Volkswagen"""
-"0","data <- data %>% dplyr::filter(data$Make == car_brand)"
-"0",""
-"0","carSales <- zooreg(data$Quantity, frequency =  12, start = c(2007, 1))"
-"0","plot(carSales)"

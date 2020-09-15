@@ -1,1 +1,0 @@
-"0","lines(x = index(carSales)[(121-96):121], y = predictions, type = 'l', col = 'red')"
