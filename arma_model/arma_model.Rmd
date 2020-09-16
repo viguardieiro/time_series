@@ -7,7 +7,6 @@ output:
 
 ```{r}
 library(tseries)
-library(zoo)
 load("dados_arma_4.RData")
 
 plot_acf_pacf <- function(series){
@@ -37,9 +36,7 @@ plot(X[[1]], main = "Series 1", ylab = "Z_t")
 plot_acf_pacf(X[[1]])
 ```
 
-Vemos que a ACF decresce de forma mais gradual, enquanto a PACF possui valores significativos para o lag 1 e 2, e depois se tornam valores pequenos, o que traz o indicativo de ser um modelo AR(2).
-
-Vamos tentar fitar um modelo AR(2).
+Vemos que a ACF e a PACF decrescem de forma brusca, tendo valores significativos para os dois primeiros lags, dessa forma, iremos considerar dois modelos, o modelo AR(2) e o modelo ARMA(2, 2). Vamos tentar fitar um modelo AR(2).
 
 ```{r}
 model1 <- arma(X[[1]], order = c(2, 0))
@@ -49,9 +46,22 @@ summary(model1)
 Vamos visualizar inicialmente o modelo real e o previsto, e em sequência, o plot de resíduos.
 
 ```{r}
-plot(X[[1]], main = "Model for Series 1", ylab = "Z_t")
+plot(X[[1]], main = "Model for Series 1 AR(2)", ylab = "Z_t")
 lines(model1$fitted.values, col = "red")
 ```
+
+Realizando o mesmo procedimento, mas para o modelo ARMA(2, 2).
+
+```{r}
+model1 <- arma(X[[1]], order = c(2, 2))
+summary(model1)
+```
+```{r}
+plot(X[[1]], main = "Model for Series 1 AR(2)", ylab = "Z_t")
+lines(model1$fitted.values, col = "red")
+```
+
+Vemos que o AIC é menor para o modelo ARMA(2, 2), e apesar de ambos se encaixarem bem aos dados, o modelo ARMA(2, 2) representa melhor os pontos extremos da série. Vamos visualizar os resíduos obtidos:
 
 ```{r}
 plot_res(model1$residuals)
@@ -70,7 +80,7 @@ plot(X[[2]], main = "Series 2", ylab = "Z_t")
 plot_acf_pacf(X[[2]])
 ```
 
-Agora, visualizamos um situação inversa, o lag 2 é significativo na ACF e nos demais não, e na PACF o decrescimento é gradual, o que nos faz pensar se tratar de um modelo MA(2).
+Agora, visualizamos um situação inversa, o lag 2 é significativo na ACF e nos demais não, e na PACF o decrescimento é gradual, o que nos faz pensar se tratar de um modelo MA(2). No entanto, como na PACF o lag 2 também é significativo, iremos comparar com o modelo ARMA(2, 2).
 
 ```{r}
 model2 <- arma(X[[2]], order = c(0, 2))
@@ -80,9 +90,23 @@ summary(model2)
 O modelo se encaixou bem, vamos comparar a previsão e o real, e em sequência, o plot de resíduos.
 
 ```{r}
-plot(X[[2]], main = "Model for Series 2", ylab = "Z_t")
+plot(X[[2]], main = "Model for Series 2 MA(2)", ylab = "Z_t")
 lines(model2$fitted.values, col = "red")
 ```
+
+Realizando o mesmo processo com o modelo ARMA(2, 2).
+
+```{r}
+model2 <- arma(X[[2]], order = c(2, 2))
+summary(model2)
+```
+
+```{r}
+plot(X[[2]], main = "Model for Series 2 ARMA(2, 2)", ylab = "Z_t")
+lines(model2$fitted.values, col = "red")
+```
+
+Vemos que apesar de extramemente parecidos, o modelo ARMA(2, 2) teve o AIC um pouquinho menor. Vamos visualizar o resíduo obtido com ele:
 
 ```{r}
 plot_res(model2$residuals)
@@ -128,14 +152,14 @@ plot(X[[4]], main = "Series 4", ylab = "Z_t")
 plot_acf_pacf(X[[4]])
 ```
 
-A série apresenta uma função de ACF que cai drasticamente após o lag 2, enquanto a PACF cai mais gradualmente, o que dá a noção de se tratar de um modelo MA(2). Utilizando dessa observação, fitamos:
+A série apresenta uma função de ACF que cai drasticamente após o lag 2, enquanto a PACF cai mais gradualmente de forma exponencial, o que dá a noção de se tratar de um modelo MA(2). Utilizando dessa observação, fitamos:
 
 ```{r}
 model4 <- arma(X[[4]], order = c(0, 2))
 summary(model4)
 ```
 ```{r}
-plot(X[[4]], main = "Model for Series 4", ylab = "Z_t")
+plot(X[[4]], main = "Model for Series 4 MA(2)", ylab = "Z_t")
 lines(model4$fitted.values, col = "red")
 ```
 ```{r}
