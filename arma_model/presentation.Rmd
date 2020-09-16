@@ -1,13 +1,18 @@
 ---
 title: "Modelos Arma"
+author: Giovani Valdrighi, Vitória Guardieiro
 output:
   pdf_document: default
-  html_document: default
 ---
 
-Trabalho de Giovani Valdrighi e Vitória Guardieiro para a matéria de séries temporais.
+```{r echo = FALSE}
 
-```{r}
+library(knitr)
+opts_chunk$set(echo = FALSE)
+```
+
+
+```{r message = FALSE}
 library(tseries)
 load("dados_arma_4.RData")
 
