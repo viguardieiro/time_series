@@ -1,9 +1,11 @@
 ---
-title: "ARMAmodel"
+title: "Modelos Arma"
 output:
   pdf_document: default
   html_document: default
 ---
+
+Trabalho de Giovani Valdrighi e Vitória Guardieiro para a matéria de séries temporais.
 
 ```{r}
 library(tseries)
@@ -57,7 +59,7 @@ model1 <- arma(X[[1]], order = c(2, 2))
 summary(model1)
 ```
 ```{r}
-plot(X[[1]], main = "Model for Series 1 AR(2)", ylab = "Z_t")
+plot(X[[1]], main = "Model for Series 1 ARMA(2, 2)", ylab = "Z_t")
 lines(model1$fitted.values, col = "red")
 ```
 
@@ -263,7 +265,7 @@ lines(model7$fitted.values, col = "red")
 ```
 
 ```{r}
-plot_res(model6$residuals)
+plot_res(model7$residuals)
 ```
 
 ```{r}
