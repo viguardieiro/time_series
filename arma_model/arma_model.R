@@ -93,3 +93,74 @@ plot(X[[5]], main = "Model for Series 5 ARMA(2, 2)", ylab = "Z_t")
 lines(model5$fitted.values, col = "red")
 
 plot_res(model5$residuals)
+
+#SERIES 6
+
+plot(X[[6]], main = "Series 6", ylab = "Z_t")
+
+plot_acf_pacf(X[[6]])
+
+model6 <- arma(X[[6]], order = c(0, 1))
+summary(model6)
+
+plot(X[[6]], main = "Model for Series 6 MA(1)", ylab = "Z_t")
+lines(model6$fitted.values, col = "red")
+
+plot_res(model6$residuals)
+
+hist(model6$residuals)
+
+#SERIES 7
+
+plot(X[[7]], main = "Series 7", ylab = "Z_t")
+
+plot_acf_pacf(X[[7]])
+
+model7 <- arma(X[[7]], order = c(0, 1))
+summary(model7)
+
+plot(X[[7]], main = "Model for Series 7 MA(1)", ylab = "Z_t")
+lines(model7$fitted.values, col = "red")
+
+plot_res(model6$residuals)
+
+hist(model7$residuals)
+
+#SERIES 8
+
+plot(X[[8]], main = "Series 8", ylab = "Z_t")
+
+plot_acf_pacf(X[[8]])
+
+data.frame(mean = mean(X[[8]]), variance = var(X[[8]])*227/228)
+
+model8 <- rnorm(228)
+plot(X[[8]], main = "Model for Series 8", ylab = "Z_t")
+lines(model8, col = "red")
+
+model8$residual <- X[[8]] - model8
+plot_res(model8$residual)
+
+hist(model8$residual)
+
+#SERIES 9
+
+plot(X[[9]], main = "Series 9", ylab = "Z_t")
+
+plot_acf_pacf(X[[9]])
+
+model9 <- arma(X[[9]], order = c(0, 1))
+summary(model9)
+
+plot(X[[9]], main = "Model for Series 9 MA(1)", ylab = "Z_t")
+lines(model9$fitted.values, col = "red")
+
+model9_2 <- arma(X[[9]], order = c(1, 1))
+summary(model9_2)
+
+plot(X[[9]], main = "Model for Series 9 ARMA(1,1)", ylab = "Z_t")
+lines(model9_2$fitted.values, col = "red")
+
+plot_res(model9_2$residuals)
+
+hist(model9_2$residuals)
