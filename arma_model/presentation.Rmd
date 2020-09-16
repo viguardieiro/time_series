@@ -1,0 +1,358 @@
+---
+title: "Modelos Arma"
+author: Giovani Valdrighi, Vitória Guardieiro
+output:
+  pdf_document: default
+---
+
+```{r echo = FALSE}
+
+library(knitr)
+opts_chunk$set(echo = FALSE)
+```
+
+
+```{r message = FALSE}
+library(tseries)
+load("dados_arma_4.RData")
+
+plot_acf_pacf <- function(series){
+  par(mfrow = c(2, 1))
+  acf(series, main = "ACF")
+  pacf(series, main = "PACF")
+}
+
+plot_res <- function(res){
+  plot(res, main = "Residuals of model",
+       ylab = "Residual", type = "p")
+  abline(0, 0)
+}
+```
+
+# Modelos ARMA
+
+Com 9 séries temporais, iremos avaliar cada uma delas e identificar se ela é gerada por um modelo AR(p), um modelo MA(q) ou um modelo ARMA(p, q). Em todas as diferentes séreis iremos inicialmente visualizar a série, a função de autocorrelação e a função de autocorrelação parcial.
+
+## Série 1
+
+```{r}
+plot(X[[1]], main = "Series 1", ylab = "Z_t")
+```
+
+```{r}
+plot_acf_pacf(X[[1]])
+```
+
+Vemos que a ACF e a PACF decrescem de forma brusca, tendo valores significativos para os dois primeiros lags, dessa forma, iremos considerar dois modelos, o modelo AR(2) e o modelo ARMA(2, 2). Vamos tentar fitar um modelo AR(2).
+
+```{r}
+model1 <- arma(X[[1]], order = c(2, 0))
+summary(model1)
+```
+
+Vamos visualizar inicialmente o modelo real e o previsto, e em sequência, o plot de resíduos.
+
+```{r}
+plot(X[[1]], main = "Model for Series 1 AR(2)", ylab = "Z_t")
+lines(model1$fitted.values, col = "red")
+```
+
+Realizando o mesmo procedimento, mas para o modelo ARMA(2, 2).
+
+```{r}
+model1 <- arma(X[[1]], order = c(2, 2))
+summary(model1)
+```
+```{r}
+plot(X[[1]], main = "Model for Series 1 ARMA(2, 2)", ylab = "Z_t")
+lines(model1$fitted.values, col = "red")
+```
+
+Vemos que o AIC é menor para o modelo ARMA(2, 2), e apesar de ambos se encaixarem bem aos dados, o modelo ARMA(2, 2) representa melhor os pontos extremos da série. Vamos visualizar os resíduos obtidos:
+
+```{r}
+plot_res(model1$residuals)
+```
+
+O modelo parece se adequar bem aos dados e também os resíduos não apresentam um padrão de comportamento.
+
+## Série 2
+
+```{r}
+plot(X[[2]], main = "Series 2", ylab = "Z_t")
+```
+
+
+```{r}
+plot_acf_pacf(X[[2]])
+```
+
+Agora, visualizamos um situação inversa, o lag 2 é significativo na ACF e nos demais não, e na PACF o decrescimento é gradual, o que nos faz pensar se tratar de um modelo MA(2). No entanto, como na PACF o lag 2 também é significativo, iremos comparar com o modelo ARMA(2, 2).
+
+```{r}
+model2 <- arma(X[[2]], order = c(0, 2))
+summary(model2)
+```
+
+O modelo se encaixou bem, vamos comparar a previsão e o real, e em sequência, o plot de resíduos.
+
+```{r}
+plot(X[[2]], main = "Model for Series 2 MA(2)", ylab = "Z_t")
+lines(model2$fitted.values, col = "red")
+```
+
+Realizando o mesmo processo com o modelo ARMA(2, 2).
+
+```{r}
+model2 <- arma(X[[2]], order = c(2, 2))
+summary(model2)
+```
+
+```{r}
+plot(X[[2]], main = "Model for Series 2 ARMA(2, 2)", ylab = "Z_t")
+lines(model2$fitted.values, col = "red")
+```
+
+Vemos que apesar de extramemente parecidos, o modelo ARMA(2, 2) teve o AIC um pouquinho menor. Vamos visualizar o resíduo obtido com ele:
+
+```{r}
+plot_res(model2$residuals)
+```
+
+O modelo aparentemente se adequa bem a sazonalidade da série real, no entanto, não conseguimos capturar os picos extremos como ocorrem na série real, e os resíduos também se distribuem uniformemente ao longo da série.
+
+## Série 3
+
+```{r}
+plot(X[[3]], main = "Series 3", ylab = "Z_t")
+```
+
+```{r}
+plot_acf_pacf(X[[3]])
+```
+
+Nesse modelo existe um comportamento diferente dos demais, tanto a ACF quanto a PACF são praticamente nulas para todos os valores, menos para a ACF de 0, o que indica que as amostras não possuem covariância, se comportando como um ruído branco. Vamos verificar a média e a variância da série.
+
+```{r}
+data.frame(mean = mean(X[[3]]), variance = var(X[[3]])*296/297)
+```
+
+Vemos que o modelo se comporta como um ruído branco, isto é, $a_t$ com $E(a_t)=0$ e $Var(a_t) = 1$. Se nós gerarmos $297$ amostras de $a_t$ e visualizarmos tanto o modelo e predição, quanto o residual, teremos:
+
+```{r}
+model3 <- rnorm(297)
+plot(X[[3]], main = "Model for Series 3", ylab = "Z_t")
+lines(model3, col = "red")
+```
+
+```{r}
+model3$residual <- X[[3]] - model3
+plot_res(model3$residual)
+```
+
+## Série 4
+
+```{r}
+plot(X[[4]], main = "Series 4", ylab = "Z_t")
+```
+```{r}
+plot_acf_pacf(X[[4]])
+```
+
+A série apresenta uma função de ACF que cai drasticamente após o lag 2, enquanto a PACF cai mais gradualmente de forma exponencial, o que dá a noção de se tratar de um modelo MA(2). Utilizando dessa observação, fitamos:
+
+```{r}
+model4 <- arma(X[[4]], order = c(0, 2))
+summary(model4)
+```
+```{r}
+plot(X[[4]], main = "Model for Series 4 MA(2)", ylab = "Z_t")
+lines(model4$fitted.values, col = "red")
+```
+```{r}
+plot_res(model4$residuals)
+```
+
+O modelo se encaixou bem aos dados, incluindo apresentando uma distribuição uniforme dos ruídos.
+
+## Série 5
+
+```{r}
+plot(X[[5]], main = "Series 5", ylab = "Z_t")
+```
+
+```{r}
+plot_acf_pacf(X[[5]])
+```
+
+Vemos que tanto a ACF quanto a PACF são extremamente baixas para valores diferentes de 0, no entanto, nessa série possuímos bem menos amostras que as demais, possuindo apenas 61 amostras. Por esse motivo, iremos considerar que a importância do segundo lag na PACF e avaliar dois modelos distintos, AR(2) e ARMA(2, 2). Considerando primeiro o modelo AR(2).
+
+```{r}
+model5 <- arma(X[[5]], order = c(2, 0))
+summary(model5)
+```
+
+```{r}
+plot(X[[5]], main = "Model for Series 5 AR(2)", ylab = "Z_t")
+lines(model5$fitted.values, col = "red")
+```
+
+E agora o modelo ARMA(2, 2).
+
+```{r}
+model5 <- arma(X[[5]], order = c(2, 2))
+summary(model5)
+```
+
+```{r}
+plot(X[[5]], main = "Model for Series 5 ARMA(2, 2)", ylab = "Z_t")
+lines(model5$fitted.values, col = "red")
+```
+
+Vemos que o modelo ARMA(2, 2) apresentou um AIC menor, de 170, em comparação com o AR(2), além disso, ele também encaixou melhor na curva real dos dados. Vamos visualizar os resíduos:
+
+```{r}
+plot_res(model5$residuals)
+```
+
+## Série 6
+
+```{r}
+plot(X[[6]], main = "Series 6", ylab = "Z_t")
+```
+
+```{r}
+plot_acf_pacf(X[[6]])
+```
+
+Aqui temos que o ACF diminui bastante para lag acima de 1 enquanto que o PACF se mantém consistentemente baixo para lag maiot que 0, o que indica que o modelo MA(1) pode ser apropriada para essa série.
+
+```{r}
+model6 <- arma(X[[6]], order = c(0, 1))
+summary(model6)
+```
+
+```{r}
+plot(X[[6]], main = "Model for Series 6 MA(1)", ylab = "Z_t")
+lines(model6$fitted.values, col = "red")
+```
+
+```{r}
+plot_res(model6$residuals)
+```
+
+```{r}
+hist(model6$residuals)
+```
+
+O modelo não conseguiu capturar bem os picos da série real, mas se encaixou razoavelmente bem.
+
+## Série 7
+
+```{r}
+plot(X[[7]], main = "Series 7", ylab = "Z_t")
+```
+
+```{r}
+plot_acf_pacf(X[[7]])
+```
+
+O ACF decai rapidamente para lag maior do que $1$, enquanto que o PACF decresce bem lentamente, o que indica que o modelo MA(1) é uma boa escolha aqui.
+
+```{r}
+model7 <- arma(X[[7]], order = c(0, 1))
+summary(model7)
+```
+
+```{r}
+plot(X[[7]], main = "Model for Series 7 MA(1)", ylab = "Z_t")
+lines(model7$fitted.values, col = "red")
+```
+
+```{r}
+plot_res(model7$residuals)
+```
+
+```{r}
+hist(model7$residuals)
+```
+
+O modelo se enccaixou razoavelmente aos dados, mas não capturou bem os picos apresentados.
+
+## Série 8
+
+```{r}
+plot(X[[8]], main = "Series 8", ylab = "Z_t")
+```
+
+
+```{r}
+plot_acf_pacf(X[[8]])
+```
+
+Tanto ACF quanto PACF são bem pequenas para lag maiores que zero, indicando que é um ruído branco.
+
+```{r}
+data.frame(mean = mean(X[[8]]), variance = var(X[[8]])*227/228)
+```
+
+Temos que $E(a_t)=0$ e $Var(a_t) = 1$, o que indica que o modelo se comporta como um ruído branco. Gerarmos $228$ amostras de $a_t$ e visualizarmos tanto o modelo e predição, quanto o residual:
+
+```{r}
+model8 <- rnorm(228)
+plot(X[[8]], main = "Model for Series 8", ylab = "Z_t")
+lines(model8, col = "red")
+```
+
+```{r}
+model8$residual <- X[[8]] - model8
+plot_res(model8$residual)
+```
+
+```{r}
+hist(model8$residual)
+```
+
+## Série 9
+
+```{r}
+plot(X[[9]], main = "Series 9", ylab = "Z_t")
+```
+
+```{r}
+plot_acf_pacf(X[[9]])
+```
+
+O ACF decai rapidamente para lag maior do que $1$, equanto que o PACF decai mais lentamente para lag maior do que $1$. Assim, testaremos os modelos MA(1) e ARMA(1,1).
+
+```{r}
+model9 <- arma(X[[9]], order = c(0, 1))
+summary(model9)
+```
+
+```{r}
+plot(X[[9]], main = "Model for Series 9 MA(1)", ylab = "Z_t")
+lines(model9$fitted.values, col = "red")
+```
+
+```{r}
+model9_2 <- arma(X[[9]], order = c(1, 1))
+summary(model9_2)
+```
+
+```{r}
+plot(X[[9]], main = "Model for Series 9 ARMA(1,1)", ylab = "Z_t")
+lines(model9_2$fitted.values, col = "red")
+```
+
+Tivemos que o modelo ARMA(1,1) apresentou AIC menor que o modelo MA(1), além de aparentar visualmente se encaixar um pouco melhor nos dados.
+
+```{r}
+plot_res(model9_2$residuals)
+```
+
+```{r}
+hist(model9_2$residuals)
+```
+
+O modelo se encaixou bem aos dados, conseguindo capturar razoavelmente os picos.
