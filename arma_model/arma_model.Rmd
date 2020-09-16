@@ -1,6 +1,8 @@
 ---
 title: "ARMAmodel"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r}
@@ -38,11 +40,14 @@ plot_acf_pacf(X[[1]])
 Vemos que a ACF decresce de forma mais gradual, enquanto a PACF possui valores significativos para o lag 1 e 2, e depois se tornam valores pequenos, o que traz o indicativo de ser um modelo AR(2).
 
 Vamos tentar fitar um modelo AR(2).
+
 ```{r}
 model1 <- arma(X[[1]], order = c(2, 0))
 summary(model1)
 ```
+
 Vamos visualizar inicialmente o modelo real e o previsto, e em sequência, o plot de resíduos.
+
 ```{r}
 plot(X[[1]], main = "Model for Series 1", ylab = "Z_t")
 lines(model1$fitted.values, col = "red")
@@ -113,3 +118,69 @@ lines(model3, col = "red")
 model3$residual <- X[[3]] - model3
 plot_res(model3$residual)
 ```
+
+## Série 4
+
+```{r}
+plot(X[[4]], main = "Series 4", ylab = "Z_t")
+```
+```{r}
+plot_acf_pacf(X[[4]])
+```
+
+A série apresenta uma função de ACF que cai drasticamente após o lag 2, enquanto a PACF cai mais gradualmente, o que dá a noção de se tratar de um modelo MA(2). Utilizando dessa observação, fitamos:
+
+```{r}
+model4 <- arma(X[[4]], order = c(0, 2))
+summary(model4)
+```
+```{r}
+plot(X[[4]], main = "Model for Series 4", ylab = "Z_t")
+lines(model4$fitted.values, col = "red")
+```
+```{r}
+plot_res(model4$residuals)
+```
+
+O modelo se encaixou bem aos dados, incluindo apresentando uma distribuição uniforme dos ruídos.
+
+## Série 5
+
+```{r}
+plot(X[[5]], main = "Series 5", ylab = "Z_t")
+```
+
+```{r}
+plot_acf_pacf(X[[5]])
+```
+
+Vemos que tanto a ACF quanto a PACF são extremamente baixas para valores diferentes de 0, no entanto, nessa série possuímos bem menos amostras que as demais, possuindo apenas 61 amostras. Por esse motivo, iremos considerar que a importância do segundo lag na PACF e avaliar dois modelos distintos, AR(2) e ARMA(2, 2). Considerando primeiro o modelo AR(2).
+
+```{r}
+model5 <- arma(X[[5]], order = c(2, 0))
+summary(model5)
+```
+
+```{r}
+plot(X[[5]], main = "Model for Series 5 AR(2)", ylab = "Z_t")
+lines(model5$fitted.values, col = "red")
+```
+
+E agora o modelo ARMA(2, 2).
+
+```{r}
+model5 <- arma(X[[5]], order = c(2, 2))
+summary(model5)
+```
+
+```{r}
+plot(X[[5]], main = "Model for Series 5 ARMA(2, 2)", ylab = "Z_t")
+lines(model5$fitted.values, col = "red")
+```
+
+Vemos que o modelo ARMA(2, 2) apresentou um AIC menor, de 170, em comparação com o AR(2), além disso, ele também encaixou melhor na curva real dos dados. Vamos visualizar os resíduos:
+
+```{r}
+plot_res(model5$residuals)
+```
+

@@ -17,9 +17,8 @@ plot_res <- function(res){
 
 # SERIES 1
 plot(X[[1]], main = "Series 1", ylab = "Z_t")
-par(mfrow = c(2, 1))
-acf(X[[1]], main = "ACF")
-pacf(X[[1]], main = "PACF")
+
+plot_acf_pacf(X[[1]])
 
 #LOOKS LIKE AR(2)
 
@@ -53,6 +52,44 @@ plot_acf_pacf(X[[3]])
 
 #LOOKS LIVE ARMA(0, 0) WHITE NOISE
 
-model3 <- arima(X[[3]], order = c(0, 0, 0), include.mean = FALSE)
-summary(model3)
-plot(model3$coef)
+data.frame(mean = mean(X[[3]]), variance = var(X[[3]])*296/297)
+
+model3 <- rnorm(297)
+plot(X[[3]], main = "Model for Series 3", ylab = "Z_t")
+lines(model3, col = "red")
+
+model3$residual <- X[[3]] - model3
+plot_res(model3$residual)
+
+
+#SERIES 4
+plot(X[[4]], main = "Series 4", ylab = "Z_t")
+plot_acf_pacf(X[[4]])
+
+#LOOK LIKES MA(2)
+
+model4 <- arma(X[[4]], order = c(0, 2))
+summary(model4)
+
+plot(X[[4]], main = "Model for Series 4", ylab = "Z_t")
+lines(model4$fitted.values, col = "red")
+
+plot_res(model4$residuals)
+
+#SERIES 5
+plot(X[[5]], main = "Series 5", ylab = "Z_t")
+plot_acf_pacf(X[[5]])
+
+model5 <- arma(X[[5]], order = c(2, 0))
+summary(model5)
+
+plot(X[[5]], main = "Model for Series 5 AR(2)", ylab = "Z_t")
+lines(model5$fitted.values, col = "red")
+
+model5 <- arma(X[[5]], order = c(2, 2))
+summary(model5)
+
+plot(X[[5]], main = "Model for Series 5 ARMA(2, 2)", ylab = "Z_t")
+lines(model5$fitted.values, col = "red")
+
+plot_res(model5$residuals)
