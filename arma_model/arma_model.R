@@ -1,6 +1,6 @@
 ## ---------------------------------------------------------------------------------------
 library(tseries)
-load("dados_arma_4.RData")
+load("novos_dados_arma_4.RData")
 
 plot_acf_pacf <- function(series){
   par(mfrow = c(2, 1))
