@@ -44,4 +44,4 @@ ggplot(data = as.data.frame(skips)) +
 #Values in Air Quality Data
 dataNaN <- data.frame(Date.Local = seq(from = min(data$Date.Local), to = max(data$Date.Local), by = 1))
 dataNaN <- as.data.frame(merge(data, dataNaN, all.y = TRUE))
-imputedData <- kNN(dataNaN)
+imputedData <- kNN(dataNaN$O3.Mean, variable = c("O3.Mean"))
