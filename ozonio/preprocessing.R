@@ -98,6 +98,95 @@ ggplot() +
   ggtitle("Real vs Imputed data (by separated imput., weighted by distance)") +
   theme_bw()
 
+
+#############################3
+### WEEK DATA
+
+k = 0
+val = 1
+l = rep(NA, length(fulldata$Date.Local) - 1)
+while(k < length(fulldata$Date.Local) - 1){
+  for(i in 1:7){
+    print(val)
+    l[k+i] = val
+  }
+  val = val + 1
+  k = k +7
+}
 #Creating weekly data
-weekData <- cbind(fulldata)
-weekData$weekday <- format(fulldata$Date.Local, format = "%Y-%U")
+weekData <- cbind(fulldata[fulldata$Date.Local >= "2001-07-15",])
+weekData$weekInd <- l
+weekData <- weekData %>% group_by(weekInd) %>% summarise(O3.Mean = mean(O3.Mean, na.rm = TRUE))
+weekData$weekDay <- fulldata$Date.Local[seq(2, length(fulldata$Date.Local),7)]
+
+ggplot(weekData) +
+  geom_point(aes(x = weekDay, y = O3.Mean)) +
+  scale_y_continuous(name = "O3") +
+  scale_x_date(date_breaks = "2 year", name = "Date", date_labels  = "%Y") + 
+  theme_bw()
+
+#look for missing data
+print(sum(is.na(weekData$O3.Mean)))
+print(sum(is.na(weekData$O3.Mean))/length(weekData$O3.Mean))
+#around 4.3% of the data is missing
+
+temp <- weekData[!is.na(weekData$O3.Mean), ]
+skips <- temp$weekDay - lag(temp$weekDay)
+skips <- skips[skips > 7][-1]/7
+
+ggplot(data = as.data.frame(skips)) +
+  geom_bar(aes(skips), fill = "blue") +
+  scale_y_continuous(name = "Count") +
+  scale_x_continuous(name = "Quantity of weeks", breaks = seq(0, 16, 2)) +
+  ggtitle("Weeks missing in sequence") +
+  theme_bw()
+
+imputedWeek <- cbind(weekData)
+imputedWeek$weekDay <- NA
+imputedWeek <- kNN(imputedWeek, variable = "O3.Mean", k = 4, 
+                   numFun = weighted.mean, weightDist =  TRUE)
+
+ggplot(imputedWeek) +
+  geom_point(aes(x = weekInd, y = O3.Mean), colour = 'red') +
+  theme
+imputedWeek$Date.Local <- weekData$weekDay
+
+
+ggplot() +
+  geom_point(data = imputedWeek[is.na(weekData$O3.Mean), ], aes(x = Date.Local, y = O3.Mean), colour = 'red') +
+  geom_point(data = weekData, aes(x = weekDay, y = O3.Mean), alpha = 0.2, fill = "black") +
+  scale_y_continuous(name = "O3") +
+  scale_x_date(date_breaks = "1 years", date_labels = "%Y", name = "Date")+
+  ggtitle("Real vs Imputed data") +
+  theme_bw()
+
+ggplot() +
+  geom_point(data = imputedWeek[is.na(weekData$O3.Mean), ], aes(x = Date.Local, y = O3.Mean), colour = 'red') +
+  geom_point(data = weekData, aes(x = weekDay, y = O3.Mean), alpha = 0.2, fill = "black") +
+  scale_y_continuous(name = "O3") +
+  scale_x_date(date_breaks = "1 years", date_labels = "%Y", name = "Date", limits = c(as.Date("2011-01-01"), as.Date("2012-01-01"))) +
+  ggtitle("Real vs Imputed data") +
+  theme_bw()
+
+imputedWeek[(imputedWeek$Date.Local > "2011-01-01") 
+            & (imputedWeek$Date.Local < "2012-01-01") 
+            & (is.na(weekData$O3.Mean)),"O3.Mean"] <- NA
+
+imputedWeek <- kNN(imputedWeek, variable = "O3.Mean", k = 16, 
+                   numFun = weighted.mean, weightDist =  TRUE)
+
+ggplot() +
+  geom_point(data = imputedWeek[is.na(weekData$O3.Mean), ], aes(x = Date.Local, y = O3.Mean), colour = 'red') +
+  geom_point(data = weekData, aes(x = weekDay, y = O3.Mean), alpha = 0.2, fill = "black") +
+  scale_y_continuous(name = "O3") +
+  scale_x_date(date_breaks = "1 years", date_labels = "%Y", name = "Date")+
+  ggtitle("Real vs Imputed data") +
+  theme_bw()
+
+ggplot() +
+  geom_point(data = imputedWeek[is.na(weekData$O3.Mean), ], aes(x = Date.Local, y = O3.Mean), colour = 'red') +
+  geom_point(data = weekData, aes(x = weekDay, y = O3.Mean), alpha = 0.2, fill = "black") +
+  scale_y_continuous(name = "O3") +
+  scale_x_date(date_breaks = "1 years", date_labels = "%Y", name = "Date", limits = c(as.Date("2011-01-01"), as.Date("2012-01-01"))) +
+  ggtitle("Real vs Imputed data") +
+  theme_bw()
