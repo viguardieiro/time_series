@@ -1,0 +1,275 @@
+---
+title: "Ozonio model"
+author: "Giovani Valdrighi, Vitória Guardieiro"
+date: "24/09/2020"
+output: beamer_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+## R Markdown
+
+This is an R Markdown presentation. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
+
+## Slide with Bullets
+
+- Bullet 1
+- Bullet 2
+- Bullet 3
+
+## Slide with R Output
+
+```{r cars, echo = TRUE}
+summary(cars)
+```
+
+## Slide with Plot
+
+```{r pressure}
+plot(pressure)
+```
+
+## Data
+
+- New York data from 15/07/2001 to 30/04/2016.
+
+```{r, message=FALSE}
+library(ggplot2)
+library(dplyr)
+library(VIM)
+library(zoo)
+data <- read.csv("NY.csv")
+data <- data %>% select(Date.Local, O3.Mean) %>% mutate(Date.Local = as.Date(Date.Local))
+data <- data[-1, ]
+startDate <- data$Date.Local[1] #First observed sunday
+finalDate <- data$Date.Local[length(data$Date.Local)] #Last observed day
+days <- seq(from = startDate, to = finalDate, by = 1)
+dayWeek <- seq(from = startDate, to =  finalDate, by = 7)
+#fulldata have NA rows in days that there is no observation
+fulldata <- data.frame(Date.Local = days)
+fulldata <- as.data.frame(merge(data, fulldata, all.y = TRUE)) %>% mutate(Date.Local = as.Date(Date.Local))
+ggplot(data = fulldata) +
+  geom_point(aes(x = Date.Local, y = O3.Mean)) +
+  scale_x_date(date_breaks = "1 years", date_labels = "%Y", name = "Date") +
+  scale_y_continuous(name = "O3") +
+  ggtitle("Daily O3 mean") + 
+  theme_bw()
+```
+
+## Missing data
+
+- There are 52 time skips in the data, in a total of 473 days.
+- The biggest skips is 108 days in 2011.
+- The majority of skips are of 1 or 2 days.
+- Around 9.5% missing data.
+- The missing observations are distributed along the time without a clear pattern.
+
+
+---
+
+```{r}
+dateJumps <- data$Date.Local - lag(data$Date.Local, n = 1)
+dateJumps[is.na(dateJumps)] <- FALSE
+ggplot(data = data[dateJumps > 1, ]) + 
+  geom_point(aes(x = Date.Local, y = O3.Mean), colour = 'red') +
+  scale_x_date(name = "Date") + 
+  scale_y_continuous(name = "O3") +
+  ggtitle("Observations after data skips") +
+  theme_bw()
+```
+
+----
+
+```{r}
+skips <- dateJumps[dateJumps > 1]
+ggplot(data = as.data.frame(skips)) +
+  geom_bar(aes(skips), fill = "blue") +
+  scale_y_continuous(name = "Count") +
+  scale_x_continuous(name = "Quantity of days", breaks = seq(0, 150, 5)) +
+  ggtitle("Days missing in sequence") +
+  theme_bw()
+```
+
+## Imputation method
+
+- It was used the kNN method to imputate values on missing observations.
+- The kNN method needs the parameter k, the number of closest points considered.
+- Starting with k = 7.
+
+---
+
+```{r}
+imputedData <- data.frame("obs" = index(fulldata), "O3.Mean" = fulldata$O3.Mean)
+imputedData <- kNN(imputedData, variable = "O3.Mean", k = 7) #K = 7 because we'll consider the week of the missing data
+imputedData$Date.Local <- days
+
+ggplot() +
+  geom_point(data = imputedData[is.na(fulldata$O3.Mean), ], aes(x = Date.Local, y = O3.Mean), colour = 'red') +
+  geom_point(data = fulldata, aes(x = Date.Local, y = O3.Mean), alpha = 0.2, fill = "black") +
+  scale_y_continuous(name = "O3") +
+  scale_x_date(date_breaks = "1 years", date_labels = "%Y", name = "Date") +
+  ggtitle("Real vs Imputed data") +
+  theme_bw()
+```
+
+---
+
+- Method create a bad behavior where the size of the skips is bigger than 7 days.
+
+```{r}
+ggplot() +
+  geom_point(data = imputedData[is.na(fulldata$O3.Mean), ], aes(x = Date.Local, y = O3.Mean), colour = 'red') +
+  geom_point(data = fulldata, aes(x = Date.Local, y = O3.Mean), alpha = 0.2, fill = "black") +
+  scale_y_continuous(name = "O3") +
+  scale_x_date(date_breaks = "1 years", date_labels = "%Y", name = "Date", limits = c(as.Date("2011-01-01"), as.Date("2012-01-01"))) +
+  ggtitle("Real vs Imputed data") +
+  theme_bw()
+```
+
+
+---
+
+- To deal with this, the parameter k used for imputation will be different if the size of the skip is minor tem 30 days, between 30 days and 100 days, or bigger than 100 days.
+- k = 7, k = 45, k = 120, respectively.
+- We will aggregate closest points by weighted by distance mean.
+
+---
+
+```{r}
+imputedData[((is.na(fulldata$O3.Mean)) 
+             & (fulldata$Date.Local > "2003-08-01") 
+             & (fulldata$Date.Local < "2003-09-15")),"O3.Mean"] <- NA
+
+imputedData[((is.na(fulldata$O3.Mean)) 
+             & (fulldata$Date.Local > "2009-07-01") 
+             & (fulldata$Date.Local < "2009-08-20")),"O3.Mean"] <- NA
+
+imputedData <- kNN(imputedData, variable = c("O3.Mean"), numFun = weighted.mean, k = 45, weightDist = TRUE)
+
+
+imputedData[((is.na(fulldata$O3.Mean)) 
+              & (fulldata$Date.Local > "2011-01-01") 
+              & (fulldata$Date.Local < "2012-01-01")),"O3.Mean"] <- NA
+
+imputedData <- kNN(imputedData, variable = c("O3.Mean"), numFun = weighted.mean, k = 120, weightDist = TRUE)
+
+ggplot() +
+  geom_point(data = imputedData[is.na(fulldata$O3.Mean), ], aes(x = Date.Local, y = O3.Mean), colour = 'red') +
+  geom_point(data = fulldata, aes(x = Date.Local, y = O3.Mean), alpha = 0.2, fill = "black") +
+  scale_y_continuous(name = "O3") +
+  scale_x_date(date_breaks = "1 years", date_labels = "%Y", name = "Date") +
+  ggtitle("Real vs Imputed data (by separeted imput.)") +
+  theme_bw()
+
+```
+
+---
+
+```{r}
+ggplot() +
+  geom_point(data = imputedData[is.na(fulldata$O3.Mean), ], aes(x = Date.Local, y = O3.Mean), colour = 'red') +
+  geom_point(data = fulldata, aes(x = Date.Local, y = O3.Mean), alpha = 0.2, fill = "black") +
+  scale_y_continuous(name = "O3") +
+  scale_x_date(date_breaks = "1 years", date_labels = "%Y", name = "Date", limits = c(as.Date("2011-01-01"), as.Date("2012-01-01"))) +
+  ggtitle("Real vs Imputed data (by separated imput.)") +
+  theme_bw()
+```
+
+## Weekly data
+```{r}
+k = 0
+val = 1
+l = rep(NA, length(fulldata$Date.Local) - 1)
+while(k < length(fulldata$Date.Local) - 1){
+  for(i in 1:7){
+    l[k+i] = val
+  }
+  val = val + 1
+  k = k +7
+}
+
+weekData <- cbind(fulldata)
+weekData$weekInd <- l
+weekData <- weekData %>% group_by(weekInd) %>% summarise(O3.Mean = mean(O3.Mean, na.rm = TRUE))
+weekData$Date.Local <- dayWeek
+ggplot(weekData) +
+  geom_point(aes(x = Date.Local, y = O3.Mean)) +
+  scale_y_continuous(name = "O3") +
+  scale_x_date(date_breaks = "2 year", name = "Date", date_labels  = "%Y") + 
+  ggtitle("Weekly O3 mean") + 
+  theme_bw()
+```
+
+
+---
+
+- If the data is grouped by week, ignoring the missing values when aggregating, it'll have 33 missing observations.
+- Around 4.3% missing data.
+
+```{r}
+
+temp <- weekData[!is.na(weekData$O3.Mean), ]
+skips <- temp$Date.Local - lag(temp$Date.Local)
+skips <- skips[skips > 7][-1]/7
+
+ggplot(data = as.data.frame(skips)) +
+  geom_bar(aes(skips), fill = "blue") +
+  scale_y_continuous(name = "Count") +
+  scale_x_continuous(name = "Quantity of weeks", breaks = seq(0, 16, 2)) +
+  ggtitle("Weeks missing in sequence") +
+  theme_bw()
+```
+
+---
+
+```{r}
+imputedWeek <- cbind(weekData)
+imputedWeek <- kNN(imputedWeek, variable = "O3.Mean", k = 4, 
+                   numFun = weighted.mean, weightDist =  TRUE)
+
+ggplot() +
+  geom_point(data = imputedWeek[is.na(weekData$O3.Mean),], aes(x = Date.Local, y = O3.Mean), colour = 'red') +
+  geom_point(data = weekData, aes(x = Date.Local, y = O3.Mean), colour = "black", alpha = 0.4) +
+  scale_x_date(name ="Date", date_breaks = "1 year", date_labels = "%Y") +
+  scale_y_continuous(name = "O3") + 
+  ggtitle("Weekly Real vs Imputed data") +
+  theme_bw()
+```
+
+---
+
+- It has the same problem when the sequence of missing data is to big.
+- Again, if there is more than 5 missing weeks, it will be used k = 16, if it's less, it'll be k = 4.
+
+```{r}
+imputedWeek[(imputedWeek$Date.Local > "2011-01-01") 
+            & (imputedWeek$Date.Local < "2012-01-01") 
+            & (is.na(weekData$O3.Mean)),"O3.Mean"] <- NA
+
+imputedWeek <- kNN(imputedWeek, variable = "O3.Mean", k = 16, 
+                   numFun = weighted.mean, weightDist =  TRUE)
+
+ggplot() +
+  geom_point(data = imputedWeek[is.na(weekData$O3.Mean), ], aes(x = Date.Local, y = O3.Mean), colour = 'red') +
+  geom_point(data = weekData, aes(x = Date.Local, y = O3.Mean), alpha = 0.2, fill = "black") +
+  scale_y_continuous(name = "O3") +
+  scale_x_date(date_breaks = "1 years", date_labels = "%Y", name = "Date")+
+  ggtitle("Weekly Real vs Imputed data") +
+  theme_bw()
+```
+
+---
+
+```{r}
+ggplot() +
+  geom_point(data = imputedWeek[is.na(weekData$O3.Mean), ], aes(x = Date.Local, y = O3.Mean), colour = 'red') +
+  geom_point(data = weekData, aes(x = Date.Local, y = O3.Mean), alpha = 0.2, fill = "black") +
+  scale_y_continuous(name = "O3") +
+  scale_x_date(date_breaks = "1 years", date_labels = "%Y", name = "Date", limits = c(as.Date("2011-01-01"), as.Date("2012-01-01"))) +
+  ggtitle("Weekly Real vs Imputed data") +
+  theme_bw()
+```

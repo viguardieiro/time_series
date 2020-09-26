@@ -1,0 +1,71 @@
+---
+title: "Modelos Arma"
+author: Giovani Valdrighi, Vitória Guardieiro
+output:
+  pdf_document: default
+---
+
+```{r echo = FALSE}
+library(knitr)
+opts_chunk$set(echo = FALSE)
+```
+
+```{r message = FALSE}
+
+load("novos_dados_arma_4.RData")
+
+plot_acf_pacf <- function(series){
+  par(mfrow = c(2, 1))
+  acf(series, main = "ACF")
+  pacf(series, main = "PACF")
+}
+
+plot_res <- function(res){
+  plot(res, main = "Residuals of model",
+       ylab = "Residual", type = "p")
+  abline(0, 0)
+}
+```
+
+
+```{r}
+plot(X[[4]], main = "Series1 ", ylab = "Z_t" )
+```
+
+```{r}
+plot_acf_pacf(X[[4]])
+```
+
+
+```{r}
+model <- arma(X[[4]], order = c(0, 1))
+summary(model)
+```
+
+
+```{r}
+plot(X[[4]], main = "Model for Series 4 MA(1)", ylab = "Z_t")
+lines(model$fitted.values, col = "red")
+```
+
+
+
+```{r}
+model <- arma(X[[4]], order = c(1, 1))
+summary(model)
+```
+
+```{r}
+plot(X[[4]], main = "Model for Series 4 ARMA(1, 1)", ylab = "Z_t")
+lines(model$fitted.values, col = "red")
+```
+
+```{r}
+hist(model$residuals, main = "Residual histogram", xlab = "Residual")
+```
+
+
+
+```{r}
+plot_acf_pacf(model$residuals[-1])
+```

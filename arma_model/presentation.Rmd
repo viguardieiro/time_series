@@ -150,6 +150,48 @@ model3$residual <- X[[3]] - model3
 plot_res(model3$residual)
 ```
 
+No entanto, também existe a possibilidade de se tratar de um modelo ARMA(p, p), pois a PACF possui valores baixos, mas esses valores se mantem ao longo dos lags, sem diminuir. Além disso, a ACF de uma ARMA(p, p) se comporta como um AR(p - p), isto é, não possui valores significantes para os lags diferentes de 0.
+
+```{r}
+model3 <- arma(X[[3]], order = c(2, 2))
+summary(model3)
+```
+```{r}
+plot(X[[3]], main = "Model for Series 3 ARMA(1, 1)", ylab = "Z_t")
+lines(model3$fitted.values, col = "red")
+```
+
+O modelo não apresentou os valores da série real, se mantendo próximo da média 0. Os resíduos serão uniformemente distribuídos, mas com valores altos.
+
+```{r}
+plot_res(model3$residuals)
+```
+
+Agora, para fazer mais uma análise, vamos considerar a série 3 diferenciada.
+
+```{r}
+plot(diff(X[[3]]), main = "Diff Series 3", ylab = "diff(Z_t)")
+```
+```{r}
+plot_acf_pacf(diff(X[[3]]))
+```
+```{r}
+model3 <- arma(diff(X[[3]]), order= c(1, 0))
+summary(model3)
+```
+
+```{r}
+plot(diff(X[[3]]), main = "Model for Diff Series 3 AR(1)", ylab = "diff(Z_t)")
+lines(model3$fitted.values, col = "red")
+```
+
+Vemos que o modelo se encaixou melhor para essa série diferenciada, representando melhor os picos.
+
+```{r}
+plot_res(model3$residuals)
+```
+
+
 ## Série 4
 
 ```{r}
@@ -312,6 +354,22 @@ plot_res(model8$residual)
 ```{r}
 hist(model8$residual)
 ```
+
+Mas da mesma forma da série 3, podemos estar tratando com um modelo ARMA(p ,p), que dessa vez novamente iremos considerar.
+
+
+
+```{r}
+model8 <- arma(X[[8]], order = c(1, 1), include.intercept = FALSE)
+summary(model8)
+```
+
+```{r}
+plot(X[[8]], main = "Model for Series 8 ARMA(1, 1)", ylab = "Z_t")
+lines(model8$fitted.values, col = "red")
+```
+
+Vemos que o modelo não consegue se encaixar com os dados, produzindo uma previsão incondizente.
 
 ## Série 9
 
