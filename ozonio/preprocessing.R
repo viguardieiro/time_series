@@ -199,6 +199,9 @@ testDaily <- imputedData[imputedData$Date.Local > startLastYear, c("O3.Mean", "D
 write.csv(trainDaily, "trainDaily.csv", row.names = FALSE)
 write.csv(trainDaily, "testDaily.csv", row.names = FALSE)
 trainWeekly <- imputedWeek[imputedWeek$Date.Local < startLastYear, c("O3.Mean", "Date.Local")]
+trainWeekly[268,] <- NA
+trainWeekly[599,] <- NA
+trainWeekly <- na.omit(trainWeekly)
 testWeekly <- imputedWeek[imputedWeek$Date.Local > startLastYear, c("O3.Mean", "Date.Local")]
-write.csv(trainDaily, "trainWeekly.csv", row.names = FALSE)
-write.csv(trainDaily, "testWeekly.csv", row.names = FALSE)
+write.csv(trainWeekly, "trainWeekly.csv", row.names = FALSE)
+write.csv(trainWeekly, "testWeekly.csv", row.names = FALSE)
