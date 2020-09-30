@@ -11,6 +11,9 @@ trainWeekly.ts <- ts(data = trainWeekly$O3.Mean, start = c(2001, format(startDat
 
 plot(decompose(trainWeekly.ts))
 
+plot(acf(trainWeekly.ts[1:104]))
+plot(pacf(trainWeekly.ts[1:104]))
+
 #------
 #test if there is tendency in a 2 year window
 tend <- function(x){
@@ -37,17 +40,10 @@ trainWeekly$month <- as.factor(format(trainWeekly$Date.Local, format = "%m"))
 trainWeekly$ind <- seq(1, length(trainWeekly$Date.Local), 1)
 
 #data.frames por MAE and predictions
-naive <- rep(NA, 153)
-sazonal.linear <- rep(NA, 153)
-sazonal.poly2 <- rep(NA, 153)
-sazonal.poly3 <- rep(NA, 153)
-holt.d <- rep(NA, 153)
-holt.w_add <- rep(NA, 153)
-holt.w_mul <- rep(NA, 153)
+
 predictions <- data.frame()
 
 for(i in seq(1, 611, 4)){
-  ii = (i -1)/4 + 1
   #variables
   o3 <- trainWeekly$O3.Mean[i:(i+103)]
   startDate <- trainWeekly$Date.Local[i]
@@ -57,16 +53,12 @@ for(i in seq(1, 611, 4)){
   
   #models
   #linear regression
+  model.sazonal <- lm(o3~month)
   model.sazonal_linear <- lm(o3~ind+month)
   model.sazonal_poly2 <- lm(o3~poly(ind, 2) + month)
   model.sazonal_poly3 <- lm(o3~poly(ind, 3) + month)
   
-  optim_holt <- function(p){
-    model <- holt(o3.ts, h = 4, alpha = p[1], beta = p[2])
-    pred <- coredata(model$mean)
-    mae <- sum(abs(pred - realO3))
-    return(mae)
-  }
+  #o3.test <- o3 - model.sazonal$fitted.values
   
   #param <- optim(c(0.1, 0.1), fn = optim_holt, gr = "L-BFGS-B")
   #holt method
@@ -76,27 +68,35 @@ for(i in seq(1, 611, 4)){
   model.hw_add <- HoltWinters(o3.ts, seasonal = "additive")
   model.hw_mul <- HoltWinters(o3.ts, seasonal = "mult")
   
+  #arma
+  model.arma <- arima(o3.ts, order = c(1, 0 ,0))
+  #model.arma <- auto.arima(o3.ts)
+  
   newdata = data.frame(ind = (i+104):(i+107), 
                         month = trainWeekly$month[(i+104): (i+107)])
   
   #prediction
   pred.naive <- rep(mean(o3[(length(o3)-4):length(o3)]), 4)
+  pred.sazonal <- predict(model.sazonal, newdata = newdata)
   pred.linear <- predict(model.sazonal_linear, newdata = newdata)
   pred.poly_2 <- predict(model.sazonal_poly2, newdata = newdata)
   pred.poly_3 <- predict(model.sazonal_poly3, newdata = newdata)
   pred.holt <- coredata(model.holt$mean)
   pred.hw_add <- coredata(forecast(model.hw_add, h = 4)$mean)
   pred.hw_mul <- coredata(forecast(model.hw_mul, h = 4)$mean)
+  pred.arma <- coredata(forecast(model.arma, h = 4)$mean)
   
   #updating dataframe of predictions  
   temp <- data.frame(Date.Local = trainWeekly$Date.Local[(i+104): (i+107)],
                      pred.naive = pred.naive,
+                     pred.sazonal = pred.sazonal,
                      pred.linear = pred.linear,
                      pred.poly_2 = pred.poly_2,
                      pred.poly_3 = pred.poly_3,
                      pred.holt = pred.holt,
                      pred.hw_add = pred.hw_add,
                      pred.hw_mul = pred.hw_mul,
+                     pred.arma = pred.arma,
                      real = trainWeekly$O3.Mean[(i+104): (i+107)])
   
   predictions <- rbind(predictions, temp)
@@ -105,16 +105,21 @@ for(i in seq(1, 611, 4)){
 #-------
 #calculating residuals
 residuals <- data.frame(naive = predictions$pred.naive - predictions$real,
+                        sazonal = predictions$pred.sazonal - predictions$real,
                         linear = predictions$pred.linear - predictions$real,
                         poly_2 = predictions$pred.poly_2- predictions$real,
                         poly_3 = predictions$pred.poly_3- predictions$real,
                         holt = predictions$pred.holt- predictions$real,
                         hw_add = predictions$pred.hw_add- predictions$real,
-                        hw_mul = predictions$pred.hw_mul - predictions$real)
+                        hw_mul = predictions$pred.hw_mul - predictions$real,
+                        arma_10 = predictions$pred.arma - predictions$real)
 aux <- function(x){
   return(mean(abs(x)))
 }
 sort(sapply(residuals, aux))
+
+plot(acf(residuals$sazonal), main = "Sazonal model  residuals ACF")
+qqPlot(residuals$sazonal, main = "QQPlot of sazonal model residuals", ylab = "Residual")
 
 plot(acf(residuals$linear), main = "Linear model  residuals ACF")
 qqPlot(residuals$linear, main = "QQPlot of linear model residuals", ylab = "Residual")
@@ -122,10 +127,47 @@ qqPlot(residuals$linear, main = "QQPlot of linear model residuals", ylab = "Resi
 plot(acf(residuals$poly_2), main = "Linear model  residuals ACF")
 qqPlot(residuals$poly_2, main = "QQPlot of linear model residuals", ylab = "Residual")
 
+#------- prediction on test data
+
+testWeekly <- read.csv("testWeekly.csv")
+testWeekly$Date.Local <- as.Date(testWeekly$Date.Local)
+testWeekly$month <- as.factor(format(testWeekly$Date.Local, format = "%m"))
+predictions.test <- data.frame()
+for(i in seq(1, 52, 4)){
+  #variables
+  o3 <- testWeekly$O3.Mean[i:(i+103)]
+  startDate <- testWeekly$Date.Local[i]
+  o3.ts <- ts(o3, frequency = 52, start = c(format(startDate, "%Y"), format(startDate, "%U")))
+  month <- testWeekly$month[i:(i+103)] 
+  
+  model.sazonal <- lm(o3~month)
+  newdata = data.frame(month = testWeekly$month[(i+104): (i+107)])
+  pred <- forecast(model.sazonal, newdata = newdata)
+  temp <- data.frame(Date.Local = testWeekly$Date.Local[(i+104): (i+107)],
+                     pred = pred$mean,
+                     low = pred$lower[,2],
+                     up = pred$upper[,2],
+                     real = testWeekly$O3.Mean[(i+104): (i+107)])
+  predictions.test <- rbind(predictions.test, temp)
+  
+}
+residuals.test <- predictions.test$pred - predictions.test$real
+print(aux(residuals.test))
+
+startDate <- as.Date("2015-05-03")
+endDate <- as.Date("2016-04-24")
+
+plot(testWeekly$Date.Local, testWeekly$O3.Mean, type = 'l',  xlab = ("Date"), ylab = "O3 mean",
+     xlim = c(startDate, endDate), main = "Sazonal model of O3 weekly mean")
+polygon(c(predictions.test$Date.Local, rev(predictions.test$Date.Local)),
+        c(predictions.test$low, rev(predictions.test$up)), col = rgb(0, 0, 0.8, 0.3))
+lines(testWeekly$Date.Local, testWeekly$O3.Mean)
+lines(predictions.test$Date.Local, predictions.test$pred, col = 'red')
+
 #-------
 #working if differenced series
 trainWeekly$O3.diff <- c(NA,diff(trainWeekly$O3.Mean))
-trainWeekly.ts_diff <- diff(trainWeekly.ts)
+  trainWeekly.ts_diff <- diff(trainWeekly.ts)
 plot(decompose(trainWeekly.ts_diff))
 
 plot(acf(trainWeekly.ts_diff))
@@ -139,14 +181,6 @@ plot(tend_diff.w)
 
 #------
 #data.frames por MAE and predictions
-naive <- rep(NA, 153)
-linear <- rep(NA, 153)
-poly2 <- rep(NA, 153)
-poly3 <- rep(NA, 153)
-ses.d <- rep(NA, 153)
-holt.d <- rep(NA, 153)
-arma.11 <- rep(NA, 153)
-arma.01 <- rep(NA, 153)
 predictions.diff <- data.frame()
 
 for(i in seq(2, 611, 4)){
