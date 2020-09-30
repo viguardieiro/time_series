@@ -496,7 +496,10 @@ temp <- residuals.test %>% group_by(ind) %>% summarise_all(aux)
 startDate <- as.Date("2015-05-03")
 endDate <- as.Date("2016-04-24")
 
-temp <- predictions.test %>% group_by(ind) %>% summarise_all(mean)
+temp <- predictions.test %>% group_by(ind) %>% summarise(Date.Local = mean(Date.Local),
+                                                         pred = mean(pred),
+                                                         low = min(low),
+                                                         up = max(up))
 plot(testWeekly$Date.Local, testWeekly$O3.Mean, type = 'l',  xlab = ("Date"), ylab = "O3 mean",
      xlim = c(startDate, endDate), main = "Sazonal model of O3 weekly mean")
 polygon(c(temp$Date.Local, rev(temp$Date.Local)),

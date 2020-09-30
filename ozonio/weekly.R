@@ -43,7 +43,12 @@ trainWeekly$ind <- seq(1, length(trainWeekly$Date.Local), 1)
 
 predictions <- data.frame()
 
-for(i in seq(1, 611, 4)){
+for(i in seq(1, 508)){
+  if((i %% 4) == 1){
+    jump = 1
+  }else{
+    jump = 0
+  }
   #variables
   o3 <- trainWeekly$O3.Mean[i:(i+103)]
   startDate <- trainWeekly$Date.Local[i]
@@ -97,7 +102,9 @@ for(i in seq(1, 611, 4)){
                      pred.hw_add = pred.hw_add,
                      pred.hw_mul = pred.hw_mul,
                      pred.arma = pred.arma,
-                     real = trainWeekly$O3.Mean[(i+104): (i+107)])
+                     real = trainWeekly$O3.Mean[(i+104): (i+107)],
+                     ind = i,
+                     jump = jump)
   
   predictions <- rbind(predictions, temp)
 }
@@ -112,20 +119,21 @@ residuals <- data.frame(naive = predictions$pred.naive - predictions$real,
                         holt = predictions$pred.holt- predictions$real,
                         hw_add = predictions$pred.hw_add- predictions$real,
                         hw_mul = predictions$pred.hw_mul - predictions$real,
-                        arma_10 = predictions$pred.arma - predictions$real)
+                        arma_10 = predictions$pred.arma - predictions$real,
+                        ind = predictions$ind,
+                        jump = predictions$jump)
+library(dplyr)
+residuals.mae <- residuals %>% group_by(ind) %>% summarise_all(aux)
 aux <- function(x){
   return(mean(abs(x)))
 }
-sort(sapply(residuals, aux))
+sort(sapply(residuals.mae, aux))
 
-plot(acf(residuals$sazonal), main = "Sazonal model  residuals ACF")
-qqPlot(residuals$sazonal, main = "QQPlot of sazonal model residuals", ylab = "Residual")
+acf(residuals[residuals$jump ==1, ]$sazonal, main = "Sazonal model  residuals ACF")
+qqPlot(residuals[residuals$jum == 1,]$sazonal, main = "QQPlot of sazonal model residuals", ylab = "Residual")
 
-plot(acf(residuals$linear), main = "Linear model  residuals ACF")
-qqPlot(residuals$linear, main = "QQPlot of linear model residuals", ylab = "Residual")
-
-plot(acf(residuals$poly_2), main = "Linear model  residuals ACF")
-qqPlot(residuals$poly_2, main = "QQPlot of linear model residuals", ylab = "Residual")
+acf(residuals[residuals$jump == 1,]$linear, main = "Linear model  residuals ACF")
+qqPlot(residuals[residuals$jump == 1,]$linear, main = "QQPlot of linear model residuals", ylab = "Residual")
 
 #------- prediction on test data
 
@@ -133,7 +141,7 @@ testWeekly <- read.csv("testWeekly.csv")
 testWeekly$Date.Local <- as.Date(testWeekly$Date.Local)
 testWeekly$month <- as.factor(format(testWeekly$Date.Local, format = "%m"))
 predictions.test <- data.frame()
-for(i in seq(1, 52, 4)){
+for(i in seq(1, 49)){
   #variables
   o3 <- testWeekly$O3.Mean[i:(i+103)]
   startDate <- testWeekly$Date.Local[i]
@@ -147,22 +155,26 @@ for(i in seq(1, 52, 4)){
                      pred = pred$mean,
                      low = pred$lower[,2],
                      up = pred$upper[,2],
-                     real = testWeekly$O3.Mean[(i+104): (i+107)])
+                     real = testWeekly$O3.Mean[(i+104): (i+107)],
+                     ind = i)
   predictions.test <- rbind(predictions.test, temp)
   
 }
-residuals.test <- predictions.test$pred - predictions.test$real
-print(aux(residuals.test))
+residuals.test <- data.frame(residuals = predictions.test$pred - predictions.test$real,
+                             ind = predictions.test$ind)
+temp <- residuals.test %>% group_by(ind) %>% summarise_all(aux)
+aux(temp$residuals)
 
 startDate <- as.Date("2015-05-03")
 endDate <- as.Date("2016-04-24")
 
+temp <- predictions.test %>% group_by(ind) %>% summarise_all(mean)
 plot(testWeekly$Date.Local, testWeekly$O3.Mean, type = 'l',  xlab = ("Date"), ylab = "O3 mean",
      xlim = c(startDate, endDate), main = "Sazonal model of O3 weekly mean")
-polygon(c(predictions.test$Date.Local, rev(predictions.test$Date.Local)),
-        c(predictions.test$low, rev(predictions.test$up)), col = rgb(0, 0, 0.8, 0.3))
+polygon(c(temp$Date.Local, rev(temp$Date.Local)),
+        c(temp$low, rev(temp$up)), col = rgb(0, 0, 0.8, 0.3))
 lines(testWeekly$Date.Local, testWeekly$O3.Mean)
-lines(predictions.test$Date.Local, predictions.test$pred, col = 'red')
+lines(temp$Date.Local, temp$pred, col = 'red')
 
 #-------
 #working if differenced series
