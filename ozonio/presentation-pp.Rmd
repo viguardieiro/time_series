@@ -1,13 +1,14 @@
 ---
 title: "Modelling daily ozonio mean"
 author: "Giovani Valdrighi, Vitória Guardieiro"
-date: "24/09/2020"
-output: beamer_presentation
+date: "30/09/2020"
+output: powerpoint_presentation
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
+
 
 
 ## Data
@@ -562,4 +563,3 @@ polygon(c(predictions.test$Date.Local, rev(predictions.test$Date.Local)),
 lines(testWeekly$Date.Local, testWeekly$O3.Mean)
 lines(predictions.test$Date.Local, predictions.test$pred, col = 'red')
 ```
-
