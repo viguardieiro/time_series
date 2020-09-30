@@ -2,16 +2,18 @@
 title: "Modelling daily ozonio mean"
 author: "Giovani Valdrighi, Vitória Guardieiro"
 date: "30/09/2020"
-output: powerpoint_presentation
+output:
+  beamer_presentation: default
+  powerpoint_presentation: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
+# Data
 
-
-## Data
+## Daily data
 
 - New York data from 15/07/2001 to 30/04/2016.
 
@@ -51,8 +53,7 @@ ggplot(data = fulldata) +
 - Around 9.5% missing data.
 - The missing observations are distributed along the time without a clear pattern.
 
-
----
+----
 
 ```{r}
 dateJumps <- data$Date.Local - lag(data$Date.Local, n = 1)
@@ -83,7 +84,7 @@ ggplot(data = as.data.frame(skips)) +
 - The kNN method needs the parameter k, the number of closest points considered.
 - Starting with k = 7.
 
----
+----
 
 ```{r}
 imputedData <- data.frame("obs" = index(fulldata), "O3.Mean" = fulldata$O3.Mean)
@@ -99,9 +100,9 @@ ggplot() +
   theme_bw()
 ```
 
----
+----
 
-- Method create a bad behavior where the size of the skips is bigger than 7 days.
+- Method create a bad behavior when the size of the skips is bigger than 7 days.
 
 ```{r}
 ggplot() +
@@ -114,13 +115,13 @@ ggplot() +
 ```
 
 
----
+----
 
-- To deal with this, the parameter k used for imputation will be different if the size of the skip is minor tem 30 days, between 30 days and 100 days, or bigger than 100 days.
+- To deal with this, the parameter k used for imputation will be different if the size of the skip is minor them 30 days, between 30 days and 100 days, or bigger than 100 days.
 - k = 7, k = 45, k = 120, respectively.
 - We will aggregate closest points by weighted by distance mean.
 
----
+----
 
 ```{r}
 imputedData[((is.na(fulldata$O3.Mean)) 
@@ -150,7 +151,7 @@ ggplot() +
 
 ```
 
----
+----
 
 ```{r}
 ggplot() +
@@ -163,6 +164,7 @@ ggplot() +
 ```
 
 ## Weekly data
+
 ```{r}
 k = 0
 val = 1
@@ -188,7 +190,7 @@ ggplot(weekData) +
 ```
 
 
----
+----
 
 - If the data is grouped by week, ignoring the missing values when aggregating, it'll have 33 missing observations.
 - Around 4.3% missing data.
@@ -207,7 +209,7 @@ ggplot(data = as.data.frame(skips)) +
   theme_bw()
 ```
 
----
+----
 
 ```{r}
 imputedWeek <- cbind(weekData)
@@ -223,7 +225,7 @@ ggplot() +
   theme_bw()
 ```
 
----
+---=--
 
 - It has the same problem when the sequence of missing data is to big.
 - Again, if there is more than 5 missing weeks, it will be used k = 16, if it's less, it'll be k = 4.
@@ -245,7 +247,7 @@ ggplot() +
   theme_bw()
 ```
 
----
+----
 
 ```{r}
 ggplot() +
@@ -263,7 +265,7 @@ ggplot() +
 
 - Metric to be minimized: MAE = $\dfrac{1}{n}\sum_n |y_t - \hat{y}_t|$.
 - Rolling window of 2 years (730 days).
-- Prediction of the next 7 ddays.
+- Prediction of the next 7 days.
 - First: Test if there is tendency with Wald-Wolfowitz runs test.
   - For every 2 years window, the p-value is smaller than $1e-3$.
 - Second: Fitting of different models and evaluation of MAE error.
@@ -302,12 +304,11 @@ pacf(trainDaily.ts[1:730], main = "PACF on subset of train data")
 ----
 
 - Process:
-  - For each model:
-    - For each 2 years window:
-      - Fit model.
-      - Generate predictions of next 7 days.
-      - Compute mean of residuals for that window.
-    - Compute MAE for model as the mean of residuals.
+  - 1. For each model, run a 2 years window, for each:
+    - Fit model.
+    - Generate predictions of next 7 days.
+    - Compute mean of residuals for that window.
+  - 2. Compute MAE for model as the mean of residuals.
   
 ----
 
@@ -528,6 +529,7 @@ qqPlot(residuals$linear, main = "QQPlot of linear model residuals", ylab = "Resi
 ## Evaluating on test data
 
 - MAE: 0.003438587
+
 ```{r}
 testWeekly <- read.csv("testWeekly.csv")
 testWeekly$Date.Local <- as.Date(testWeekly$Date.Local)
