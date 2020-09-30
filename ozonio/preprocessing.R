@@ -193,7 +193,7 @@ ggplot() +
   theme_bw()
 
 ## Separating between training and test data
-startLastYear <- days[length(days) - 365]
+startLastYear <- days[length(days) - (365*3)]
 trainDaily <- imputedData[imputedData$Date.Local < startLastYear, c("O3.Mean", "Date.Local")]
 testDaily <- imputedData[imputedData$Date.Local > startLastYear, c("O3.Mean", "Date.Local")]
 write.csv(trainDaily, "trainDaily.csv", row.names = FALSE)
