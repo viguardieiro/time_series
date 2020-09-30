@@ -412,130 +412,64 @@ pacf(trainWeekly.ts[1:104], main = "PACF on subset of train data")
 ----
 
 - Results:
-  - Sazonal: 0.003903618
-  - Linear: 0.004032514
-  - Poly 2: 0.004171369
-  - Arma(1, 0): 0.004568415
-  - Poly 3: 0.004739532
-  - Holt: 0.004885386
-  - HoltWinters additive: 0.005008383 
-  - HoltWinters multiplicative: 0.005085043 
-  - Naive: 0.005122260
+  - Sazonal: 0.003771788
+  - Linear: 0.003941300
+  - Poly 2: 0.004079873
+  - Poly 3: 0.004562281
+  - Arma(1, 0): 0.004675624
+  - Holt: 0.004905350
+  - HoltWinters additive: 0.005075887 
+  - HoltWinters multiplicative: 0.005126882 
+  - Naive: 0.005160706
   
 
 ```{r}
-predictions <- data.frame()
-
-for(i in seq(1, 508, 4)){
-  #variables
-  o3 <- trainWeekly$O3.Mean[i:(i+103)]
-  startDate <- trainWeekly$Date.Local[i]
-  o3.ts <- ts(o3, frequency = 52, start = c(format(startDate, "%Y"), format(startDate, "%U")))
-  ind <- trainWeekly$ind[i:(i+103)]
-  month <- trainWeekly$month[i:(i+103)]
-  
-  #models
-  #linear regression
-  model.sazonal <- lm(o3~month)
-  model.sazonal_linear <- lm(o3~ind+month)
-  model.sazonal_poly2 <- lm(o3~poly(ind, 2) + month)
-  model.sazonal_poly3 <- lm(o3~poly(ind, 3) + month)
-  
-  #o3.test <- o3 - model.sazonal$fitted.values
-  
-  #param <- optim(c(0.1, 0.1), fn = optim_holt, gr = "L-BFGS-B")
-  #holt method
-  model.holt <- holt(o3.ts, h = 4)
-  
-  #holt winters
-  model.hw_add <- HoltWinters(o3.ts, seasonal = "additive")
-  model.hw_mul <- HoltWinters(o3.ts, seasonal = "mult")
-  
-  #arma
-  model.arma <- arima(o3.ts, order = c(1, 0 ,0))
-  #model.arma <- auto.arima(o3.ts)
-  
-  newdata = data.frame(ind = (i+104):(i+107), 
-                        month = trainWeekly$month[(i+104): (i+107)])
-  
-  #prediction
-  pred.naive <- rep(mean(o3[(length(o3)-4):length(o3)]), 4)
-  pred.sazonal <- predict(model.sazonal, newdata = newdata)
-  pred.linear <- predict(model.sazonal_linear, newdata = newdata)
-  pred.poly_2 <- predict(model.sazonal_poly2, newdata = newdata)
-  pred.poly_3 <- predict(model.sazonal_poly3, newdata = newdata)
-  pred.holt <- coredata(model.holt$mean)
-  pred.hw_add <- coredata(forecast(model.hw_add, h = 4)$mean)
-  pred.hw_mul <- coredata(forecast(model.hw_mul, h = 4)$mean)
-  pred.arma <- coredata(forecast(model.arma, h = 4)$mean)
-  
-  #updating dataframe of predictions  
-  temp <- data.frame(Date.Local = trainWeekly$Date.Local[(i+104): (i+107)],
-                     pred.naive = pred.naive,
-                     pred.sazonal = pred.sazonal,
-                     pred.linear = pred.linear,
-                     pred.poly_2 = pred.poly_2,
-                     pred.poly_3 = pred.poly_3,
-                     pred.holt = pred.holt,
-                     pred.hw_add = pred.hw_add,
-                     pred.hw_mul = pred.hw_mul,
-                     pred.arma = pred.arma,
-                     real = trainWeekly$O3.Mean[(i+104): (i+107)])
-  
-  predictions <- rbind(predictions, temp)
-}
-
 #-------
 #calculating residuals
-residuals <- data.frame(naive = predictions$pred.naive - predictions$real,
-                        sazonal = predictions$pred.sazonal - predictions$real,
-                        linear = predictions$pred.linear - predictions$real,
-                        poly_2 = predictions$pred.poly_2- predictions$real,
-                        poly_3 = predictions$pred.poly_3- predictions$real,
-                        holt = predictions$pred.holt- predictions$real,
-                        hw_add = predictions$pred.hw_add- predictions$real,
-                        hw_mul = predictions$pred.hw_mul - predictions$real,
-                        arma_10 = predictions$pred.arma - predictions$real)
+residuals <- read.csv("auxRes.csv")
+library(dplyr)
 aux <- function(x){
   return(mean(abs(x)))
 }
+residuals.mae <- residuals %>% group_by(ind) %>% summarise_all(aux)
+
 ```
 
 ## Residuals
 
 ```{r}
-acf(residuals$sazonal, main = "Sazonal model  residuals ACF")
+acf(residuals[residuals$jump ==1, ]$sazonal, main = "Sazonal model  residuals ACF")
 ```
 
 ----
 
 ```{r}
-qqPlot(residuals$sazonal, main = "QQPlot of sazonal model residuals", ylab = "Residual")
+qqPlot(residuals[residuals$jum == 1,]$sazonal, main = "QQPlot of sazonal model residuals", ylab = "Residual")
 ```
 
 ----
 
 ```{r}
-acf(residuals$linear, main = "Linear model  residuals ACF")
+acf(residuals[residuals$jump == 1,]$linear, main = "Linear model  residuals ACF")
 ```
 
 ----
 
 ```{r}
-qqPlot(residuals$linear, main = "QQPlot of linear model residuals", ylab = "Residual")
+qqPlot(residuals[residuals$jump == 1,]$linear, main = "QQPlot of linear model residuals", ylab = "Residual")
 ```
 
 
 ## Evaluating on test data
 
-- MAE: 0.003438587
+- MAE:  0.003476891
 
 ```{r}
 testWeekly <- read.csv("testWeekly.csv")
 testWeekly$Date.Local <- as.Date(testWeekly$Date.Local)
 testWeekly$month <- as.factor(format(testWeekly$Date.Local, format = "%m"))
 predictions.test <- data.frame()
-for(i in seq(1, 52, 4)){
+for(i in seq(1, 49)){
   #variables
   o3 <- testWeekly$O3.Mean[i:(i+103)]
   startDate <- testWeekly$Date.Local[i]
@@ -549,19 +483,24 @@ for(i in seq(1, 52, 4)){
                      pred = pred$mean,
                      low = pred$lower[,2],
                      up = pred$upper[,2],
-                     real = testWeekly$O3.Mean[(i+104): (i+107)])
+                     real = testWeekly$O3.Mean[(i+104): (i+107)],
+                     ind = i)
   predictions.test <- rbind(predictions.test, temp)
   
 }
-residuals.test <- predictions.test$pred - predictions.test$real
+residuals.test <- data.frame(residuals = predictions.test$pred - predictions.test$real,
+                             ind = predictions.test$ind)
+temp <- residuals.test %>% group_by(ind) %>% summarise_all(aux)
+#aux(temp$residuals)
 
 startDate <- as.Date("2015-05-03")
 endDate <- as.Date("2016-04-24")
 
+temp <- predictions.test %>% group_by(ind) %>% summarise_all(mean)
 plot(testWeekly$Date.Local, testWeekly$O3.Mean, type = 'l',  xlab = ("Date"), ylab = "O3 mean",
      xlim = c(startDate, endDate), main = "Sazonal model of O3 weekly mean")
-polygon(c(predictions.test$Date.Local, rev(predictions.test$Date.Local)),
-        c(predictions.test$low, rev(predictions.test$up)), col = rgb(0, 0, 0.8, 0.3))
+polygon(c(temp$Date.Local, rev(temp$Date.Local)),
+        c(temp$low, rev(temp$up)), col = rgb(0, 0, 0.8, 0.3))
 lines(testWeekly$Date.Local, testWeekly$O3.Mean)
-lines(predictions.test$Date.Local, predictions.test$pred, col = 'red')
+lines(temp$Date.Local, temp$pred, col = 'red')
 ```
