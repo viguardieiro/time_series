@@ -2,6 +2,7 @@ library(tseries)
 library(zoo)
 library(randtests)
 library(forecast)
+library(car)
 
 trainWeekly <- read.csv("trainWeekly.csv")
 trainWeekly$Date.Local <- as.Date(trainWeekly$Date.Local)
@@ -72,8 +73,8 @@ for(i in seq(1, 611, 4)){
   model.holt <- holt(o3.ts, h = 4)
   
   #holt winters
-  model.hw_add <- HoltWinters(o3.ts, seasonal = "multiplicative")
-  model.hw_mul <- HoltWinters(o3.ts, seasonal = "additive")
+  model.hw_add <- HoltWinters(o3.ts, seasonal = "additive")
+  model.hw_mul <- HoltWinters(o3.ts, seasonal = "mult")
   
   newdata = data.frame(ind = (i+104):(i+107), 
                         month = trainWeekly$month[(i+104): (i+107)])
@@ -95,49 +96,33 @@ for(i in seq(1, 611, 4)){
                      pred.poly_3 = pred.poly_3,
                      pred.holt = pred.holt,
                      pred.hw_add = pred.hw_add,
-                     pred.hw_mul = pred.hw_mul)
+                     pred.hw_mul = pred.hw_mul,
+                     real = trainWeekly$O3.Mean[(i+104): (i+107)])
   
   predictions <- rbind(predictions, temp)
-  
-  #4 days MAE
-  realO3 <-  trainWeekly$O3.Mean[(i+104): (i+107)]
-  naive[ii] <- mean(abs(pred.naive - realO3))
-  sazonal.linear[ii] <- mean(abs(pred.linear - realO3))
-  sazonal.poly2[ii] <- mean(abs(pred.poly_2 - realO3))
-  sazonal.poly3[ii] <- mean(abs(pred.poly_3 - realO3))
-  holt.d[ii] <- mean(abs(pred.holt - realO3))
-  holt.w_add[ii] <- mean(abs(pred.hw_add - realO3))
-  holt.w_mul[ii] <- mean(abs(pred.hw_mul - realO3))
 }
 
-print(mean(naive))
-print(mean(sazonal.linear))
-print(mean(sazonal.poly2))
-print(mean(sazonal.poly3))
-print(mean(holt.d))
-print(mean(holt.w_add))
-print(mean(holt.w_mul))
-
-holt_MAE <- function (p){
-  print(p)
-  p <- abs(p)
-  model <- holt(o3.ts, alpha = p[1], beta = p[2], h = 4)
-  pred <- coredata(model$mean)
-  mae <- sum(abs(pred - realO3))
-  print(mae)
-  return(mae)
+residuals <- data.frame(naive = predictions$pred.naive - predictions$real,
+                        linear = predictions$pred.linear - predictions$real,
+                        poly_2 = predictions$pred.poly_2- predictions$real,
+                        poly_3 = predictions$pred.poly_3- predictions$real,
+                        holt = predictions$pred.holt- predictions$real,
+                        hw_add = predictions$pred.hw_add- predictions$real,
+                        hw_mul = predictions$pred.hw_mul - predictions$real)
+aux <- function(x){
+  return(mean(abs(x)))
 }
+sort(sapply(residuals, aux))
 
-par <- c(0.4, 0.05)
+plot(acf(residuals$linear), main = "Linear model  residuals ACF")
+qqPlot(residuals$linear, main = "QQPlot of linear model residuals", ylab = "Residual")
 
-#a <- optim(par = par, fn = holt_MAE)
-
-plot(trainWeekly$Date.Local, trainWeekly$O3.Mean, type = "l")
-lines(predictions$Date.Local, predictions$pred.linear, col = "red")
-lines(predictions$Date.Local, predictions$pred.poly_2, col = "blue")
-
+plot(acf(residuals$poly_2), main = "Linear model  residuals ACF")
+qqPlot(residuals$poly_2, main = "QQPlot of linear model residuals", ylab = "Residual")
 
 
-
-
+#working if differenced series
+trainWeekly$O3.diff <- c(NA,diff(trainWeekly$O3.Mean))
+trainWeekly.ts_diff <- diff(trainWeekly.ts)
+plot(decompose(trainWeekly.ts_diff))
 
