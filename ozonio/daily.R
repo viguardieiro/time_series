@@ -26,7 +26,8 @@ tend <- function(x){
   p$p.value
 }
 
-tend.w <- rollapply(trainDaily.ts, width = 730, FUN = tend, align = "left")
+trainDaily.ts_wt_ss <- trainDaily.ts - decompose(trainDaily.ts)$season
+tend.w <- rollapply(trainDaily.ts_wt_ss , width = 730, FUN = tend, align = "left")
 print(sum(tend.w > 0.005))
 plot(tend.w)
 
@@ -188,3 +189,4 @@ polygon(c(tail(testDaily$Date.Local,366), rev(tail(testDaily$Date.Local,366))),
         c(mins, maxs), col = rgb(0, 0, 0.8, 0.3))
 lines(tail(testDaily$Date.Local,366),rowMeans(pred.holt), col = 'red')
 legend("topright", legend=c("Predictions", "Real values", "Pred interval"), col=c('red','black', 'blue'), lty = 1:1, cex=0.8)
+
