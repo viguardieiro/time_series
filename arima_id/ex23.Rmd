@@ -1,0 +1,106 @@
+---
+title: "arima"
+author: "Vitória Guardieiro"
+date: "13/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Simulação da distribuição da estatística de teste de Dickey-Fuller
+
+```{r}
+TT <-  100
+n <- 50
+S <- 10000
+phi <- 0.8
+```
+
+```{r}
+alpha_f <- function(y){
+  ax1 <- 0
+  ax2 <- 0 
+  for(i in 1:(length(y)-1)){
+    ax1 <- ax1 + y[i]*y[i+1]
+    ax2 <- ax2 + y[i]*y[i]
+  }
+  alpha <- ax1/ax2 - 0.2
+  return(alpha)
+}
+
+s_f <- function(y, alpha){
+  axs <- 0
+  ax <- 0
+  for(i in  1:(length(y)-1)){
+    axs <- axs + (y[i+1]-y[i]-alpha*y[i])^2
+    ax <- ax + y[i]^2
+  }
+  axs <- axs/(length(y)-1)
+  ax <- ax^0.5
+  s <- axs/ax
+  return(s)
+}
+
+t_f <- function(y){
+  alp <- alpha_f(y)
+  s <- s_f(y, alp)
+  t <- alp/s
+  return(t)
+}
+```
+
+```{r}
+axi <- 1
+all_t <- list()
+
+for(j in 1:S){
+  wn <- rnorm(TT+n)
+  y <- rep(0, TT+n)
+  for(i in 1:(TT+n-1)){
+    y[i+1] <- phi*y[i]+wn[i]
+  }
+
+  for(i in 1:n){
+    all_t[[axi]] <- t_f(y[i:TT+i])
+    axi <- axi+1
+  }
+}
+```
+
+```{r}
+t_num <- unlist(all_t)
+hist(t_num)
+```
+
+### 2.3 Intercepto
+
+```{r}
+interc <- 10
+
+axi <- 1
+all_t <- list()
+
+for(j in 1:S){
+  wn <- rnorm(TT+n)
+  y <- rep(0, TT+n)
+  y[1] <- interc
+  for(i in 1:(TT+n-1)){
+    y[i+1] <- interc+phi*y[i]+wn[i]
+  }
+
+  for(i in 1:n){
+    all_t[[axi]] <- t_f(y[i:TT+i])
+    axi <- axi+1
+  }
+}
+```
+
+```{r}
+t_num <- unlist(all_t)
+hist(t_num)
+```
+
+
+
