@@ -1,0 +1,98 @@
+library(zoo)
+full <- readxl::read_xlsx('covidrj.xlsx')
+df <- zoo(diff(full$deaths), order.by = full$date, frequency = 1)
+plot(df)
+
+#fitando o modelo em função do tempo desde a primeira observaçõ
+#e em função do dia da semana
+t <- rep(1:length(df))
+mod.linear <- lm(df~t)
+#visualizar coeficientes
+summary(mod.linear)
+
+#visualizar plots
+plot(mod.linear)
+
+#modelo vs dados observados
+plot(df)
+lines(mod.linear$fitted.values, col = 'red')
+
+#fittando o modelo de forma quadrática em t
+mod.quadratic <- lm(df~poly(t, 2))
+
+#visualizar coeficientes
+summary(mod.quadratic)
+
+#visualizar plots
+plot(mod.quadratic)
+
+#modelo vs dados observados
+plot(df)
+lines(mod.quadratic$fitted.values, col = 'red')
+
+#####
+newdeaths <- data.frame(deaths = diff(full$deaths), date = full$date[2:151])
+
+#medias moveis
+w7 <- filter(newdeaths$deaths, sides = 2, filter = rep(1/7, 7)) #semanal
+w15 <- filter(newdeaths$deaths, sides = 2, filter = rep(1/15, 15)) #quinzenal
+plot(x = newdeaths$date, y = newdeaths$deaths, type = 'l')
+lines(x = newdeaths$date, y = w7, col ='blue')
+lines(x = newdeaths$date, y = w15, col = 'red')
+
+#lowess
+l1 <- lowess(newdeaths$deaths, f = 0.6, iter = 0)
+l2 <- lowess(newdeaths$deaths, f = 0.2, iter = 0)
+l3 <- lowess(newdeaths$deaths, f = 0.2, iter = 2)
+plot(x = newdeaths$date, y = newdeaths$deaths, type = "l")
+lines(x = newdeaths$date, y = l1$y, col = "blue")
+lines(x = newdeaths$date, y = l2$y, col = "orange")
+lines(x = newdeaths$date, y = l3$y, col = "green")
+
+
+#diferenciação
+dtdeaths <- data.frame( date = newdeaths$date[2:150], deaths = diff(newdeaths$deaths))
+plot(dtdeaths, type = 'l')
+acf(dtdeaths$deaths)
+
+# testando por tendencia usando o runs test (wald Wolfowitz)
+library(randtests)
+#?runs.test
+randtests::runs.test(newdeaths$deaths, alternative = 'two.sided', pvalue = 'exact', plot = T)
+
+# usando aproximaÃ§Ã£o normal
+randtests::runs.test(newdeaths$deaths, alternative = 'two.sided', pvalue = 'normal')
+
+
+#as médias semanais tem tendencia?
+plot(newdeaths$deaths - w7)
+randtests::runs.test(w7, alternative = 'two.sided', pvalue = 'exact', plot = T)
+
+
+
+
+#sazonalidade
+Q <- factor(c(rep(1:7, 21), c(1, 2, 3, 4)))
+wdays.linear <- lm(df~Q+t)
+
+summary(wdays.linear)
+plot(wdays.linear)
+
+plot(df, type = 'l')
+lines(wdays.linear$fitted.values, col = 'red')
+
+mod.S <- lm(df~Q-1)
+S <- mod.S$fitted.values - mean(mod.S$coefficients)
+
+par(mfrow = c(4,1))
+plot(newdeaths$deaths, type = 'l')
+plot(w7)
+plot(S)
+plot(newdeaths$deaths - as.data.frame(w7)$x - S[2:151])
+
+plot(decompose(ts(data = diff(full$deaths), frequency = 7), type= "additive"))
+plot(decompose(ts(data = diff(full$deaths), frequency = 7), type= "multiplicative"))
+
+mod.log <- lm(log(df)~Q+t)
+
+kruskal.test(df~Q)

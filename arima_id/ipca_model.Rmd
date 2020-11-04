@@ -12,7 +12,7 @@ library(forecast)
 library(car)
 ```
 
-## ARIMA Identification
+# ARIMA Identification with IPCA data
 
 ```{r}
 ipca <- read.csv("ipca.csv")
