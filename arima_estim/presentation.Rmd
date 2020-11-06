@@ -1,0 +1,212 @@
+---
+title: "ARMA estimation"
+author: "Giovani Valdrighi, Vitória Guardieiro"
+date: "05/11/2020"
+output: beamer_presentation
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+library(tseries)
+library(fpp2)
+library(EnvStats)
+library(zoo)
+library(car)
+```
+
+# Modelling process
+
+- Plot the data and look for patters.
+- If necessary, use BoxCox transformation to stabilize the variance.
+- If necessary, remove seasonality.
+- If necessary, difference the data until is stationary. Use of Dickey Fuller test.
+- Plot the ACF and PACF to identify the model order, $p$ and $q$ for $ARMA(p, q)$.
+- Compare identified models, chose the one that minimize the AIC
+- Analysis of the residuals of the model, with ACF and histogram.
+- If the residuals look like white noise, make forecasts.
+
+# WMurders
+
+```{r}
+data <- wmurders
+par(mfrow = c(1, 1))
+plot(data, 
+     main = "Monthly female murder rate \n(per 100,000 standard population)", 
+     ylab = "Rate")
+```
+
+--- 
+
+## Variance stabilization and stationarity
+
+- There is no need to stabilize data, we can look at the tendency with Dick-Fulley.
+```{r}
+adf.test(data)
+```
+- Data is not stationary, we are going to test with one and two differences.
+
+--- 
+
+```{r}
+adf.test(diff(data))
+```
+
+```{r}
+adf.test(diff(data, differences = 2))
+```
+- Diff 1 P-value: 0.02726
+
+- Diff 2 P-value: less than 0.01 <- choosen. 
+
+---
+
+```{r}
+plot(diff(data, differences = 2), 
+     ylab = 'Value', 
+     main = "Monthly female murder rate (diff 2) \n(per 100,000 standard population)", )
+```
+
+---
+
+## ACF and PACF
+
+```{r}
+par(mfrow = c(2, 1))
+acf(diff(data, differences = 2),
+    main = "ACF Monthly female murder rate (diff 2)")
+pacf(diff(data, differences = 2),
+     main = "PACF   Monthly female murder rate (diff 2)")
+```
+
+- Looks like AR(1) because the first spike of the PACF. The models that will be tested are AR(1), MA(1), ARMA(1, 1).
+
+---
+
+## AR(1)
+
+```{r}
+model.AR1 <- Arima(data, order = c(1, 2,0 ), include.mean = FALSE)
+summary(model.AR1)
+```
+
+---
+
+```{r}
+par(mfrow = c(1, 1))
+plot(forecast(model.AR1, h = 3))
+lines(model.AR1$fitted, col = 'red')
+legend("topleft", legend=c("Predictions", "Real values"), col=c('red','black'), lty = 1:1, cex=0.8)
+```
+
+
+---
+
+### Residuals analysis
+
+```{r}
+checkresiduals(model.AR1, test = FALSE)
+```
+
+---
+
+```{r}
+qqPlot(model.AR1$residuals, main = "AR(1) model residuals")
+```
+
+---
+
+```{r}
+jarque.bera.test(model.AR1$residuals)
+```
+
+---
+
+## MA(1)
+
+```{r}
+model.MA1 <- Arima(data, order = c(0, 2,1 ), include.mean = FALSE)
+summary(model.MA1)
+```
+
+---
+
+```{r}
+par(mfrow = c(1, 1))
+plot(forecast(model.MA1, h = 3))
+lines(model.MA1$fitted, col = 'red')
+legend("topleft", legend=c("Predictions", "Real values"), col=c('red','black'), lty = 1:1, cex=0.8)
+```
+
+---
+
+### Residuals analysis
+
+```{r}
+checkresiduals(model.MA1, test = FALSE)
+```
+
+---
+
+```{r}
+qqPlot(model.MA1$residuals, main = "MA(1) model residuals")
+```
+
+---
+
+```{r}
+jarque.bera.test(model.MA1$residuals)
+```
+
+---
+
+## ARMA(1, 1)
+
+
+```{r}
+model.ARMA11 <- Arima(data, order = c(1, 2, 1 ), include.mean = FALSE)
+summary(model.ARMA11)
+```
+
+---
+
+```{r}
+par(mfrow = c(1, 1))
+plot(forecast(model.ARMA11, h = 3))
+lines(model.ARMA11$fitted, col = 'red')
+legend("topleft", legend=c("Predictions", "Real values"), col=c('red','black'), lty = 1:1, cex=0.8)
+```
+
+
+---
+
+### Residuals analysis
+
+```{r}
+checkresiduals(model.ARMA11, test = FALSE)
+```
+
+---
+
+```{r}
+qqPlot(model.ARMA11$residuals, main = "AR(1) model residuals")
+```
+
+---
+
+```{r}
+jarque.bera.test(model.ARMA11$residuals)
+```
+
+---
+
+## Model selection
+
+- The model with lowest AIC is the $ARMA(1, 1)$. The final forecast is:
+
+```{r}
+par(mfrow = c(1, 1))
+plot(forecast(model.ARMA11, h = 3))
+lines(model.ARMA11$fitted, col = 'red')
+legend("topleft", legend=c("Predictions", "Real values"), col=c('red','black'), lty = 1:1, cex=0.8)
+```
