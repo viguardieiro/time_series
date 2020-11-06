@@ -1,6 +1,7 @@
 library(tseries)
 library(fpp2)
 library(car)
+library(zoo)
 
 data <- debitcards
 plot(data, main = 'Retail Debit Card Usage In Iceland')
@@ -104,17 +105,21 @@ checkresiduals(model.AR2)
 
 par(mfrow = c(1, 1))
 plot(forecast(model.AR2, h = 3, lambda = lambda, biasadj = TRUE), include = 0, 
-     xlim = c(0, 28), ylim = c(10, 30))
+     xlim = c(0, 28), ylim = c(20, 25))
 lines(InvBoxCox(model.AR2$fitted, lambda = lambda), col = 'red')
-lines(data[141:164])
 lines(InvBoxCox(data.trend[141:164], lambda = lambda), col = "blue")
-legend("bottomleft", legend=c("Real", "Real without seasonality", "Prediction without seasonality"), col=c('black','blue', 'red'), lty = 1:1, cex=0.8)
+legend("topleft", legend=c("Real without seasonality", "Prediction without seasonality"), col=c('blue', 'red'), lty = 1:1, cex=0.8)
 
 par(mfrow = c(1, 1))
-plot(forecast(model.AR2, h = 3, lambda = lambda, biasadj = TRUE) + season.forecast, include = 0, 
-     xlim = c(0, 28), ylim = c(10, 30))
-lines(InvBoxCox(model.AR2$fitted + stl.fit$time.series[141:164, 1], lambda = lambda), col = 'red')
-lines(data[141:164])
-legend("bottomleft", legend=c("Real", "Real without seasonality", "Prediction without seasonality"), col=c('black','blue', 'red'), lty = 1:1, cex=0.8)
-season.forecast <- stl.fit$time.series[(165-12):(167-12), 1]
-plot(forecast(stl.fit, h = 3))
+arima_forecast_season <- sapply(as.data.frame(forecast(model.AR2, h =3)) + stl.fit$time.series[(165-12):(167-12), 1], 
+                                InvBoxCox, 
+                                lambda = lambda)
+arima_fitted_season <- InvBoxCox(model.AR1$fitted + stl.fit$time.series[141:164, 1], lambda = lambda)
+
+plot(data[141:164], type = 'l', ylab = "Value", xlab = "Date", xlim = c(1, 27), ylim = c(15, 28), main = "AR(2) Forecast on real scale")
+lines(arima_fitted_season, col = 'red')
+polygon(x = c(25, 26, 27, 27, 26, 25), y = c(arima_forecast_season[,4], arima_forecast_season[,5]), col = "#D5DBFF", border =  "NA")
+polygon(x = c(25, 26, 27, 27, 26, 25), y = c(arima_forecast_season[,2], arima_forecast_season[,3]), col = "#596DD5", border = "NA")
+points(x = c(25, 26, 27), y = arima_forecast_season[, 1], pch = 16, col = "#0000AA")
+legend("bottomleft", legend=c("Real", "Prediction", "Point Forecast"), col=c('black', 'red', "#0000AA"), lty = 1:1, cex=0.8)
+
