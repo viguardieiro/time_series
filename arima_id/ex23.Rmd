@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Simulação da distribuição da estatística de teste de Dickey-Fuller
+# Simulation of the distribution of the Dickey Fuller test statistic 
 
 ```{r}
 TT <-  100
@@ -74,7 +74,7 @@ t_num <- unlist(all_t)
 hist(t_num)
 ```
 
-### 2.3 Intercepto
+### 2.3 Intercept
 
 ```{r}
 interc <- 10

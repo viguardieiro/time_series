@@ -2,16 +2,18 @@
 title: "Modelling daily ozonio mean"
 author: "Giovani Valdrighi, Vitória Guardieiro"
 date: "30/09/2020"
-output: powerpoint_presentation
+output:
+  beamer_presentation: default
+  powerpoint_presentation: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
+# Data
 
-
-## Data
+## Daily data
 
 - New York data from 15/07/2001 to 30/04/2016.
 
@@ -51,8 +53,7 @@ ggplot(data = fulldata) +
 - Around 9.5% missing data.
 - The missing observations are distributed along the time without a clear pattern.
 
-
----
+----
 
 ```{r}
 dateJumps <- data$Date.Local - lag(data$Date.Local, n = 1)
@@ -83,7 +84,7 @@ ggplot(data = as.data.frame(skips)) +
 - The kNN method needs the parameter k, the number of closest points considered.
 - Starting with k = 7.
 
----
+----
 
 ```{r}
 imputedData <- data.frame("obs" = index(fulldata), "O3.Mean" = fulldata$O3.Mean)
@@ -99,9 +100,9 @@ ggplot() +
   theme_bw()
 ```
 
----
+----
 
-- Method create a bad behavior where the size of the skips is bigger than 7 days.
+- Method create a bad behavior when the size of the skips is bigger than 7 days.
 
 ```{r}
 ggplot() +
@@ -114,13 +115,13 @@ ggplot() +
 ```
 
 
----
+----
 
-- To deal with this, the parameter k used for imputation will be different if the size of the skip is minor tem 30 days, between 30 days and 100 days, or bigger than 100 days.
+- To deal with this, the parameter k used for imputation will be different if the size of the skip is minor them 30 days, between 30 days and 100 days, or bigger than 100 days.
 - k = 7, k = 45, k = 120, respectively.
 - We will aggregate closest points by weighted by distance mean.
 
----
+----
 
 ```{r}
 imputedData[((is.na(fulldata$O3.Mean)) 
@@ -150,7 +151,7 @@ ggplot() +
 
 ```
 
----
+----
 
 ```{r}
 ggplot() +
@@ -163,6 +164,7 @@ ggplot() +
 ```
 
 ## Weekly data
+
 ```{r}
 k = 0
 val = 1
@@ -188,7 +190,7 @@ ggplot(weekData) +
 ```
 
 
----
+----
 
 - If the data is grouped by week, ignoring the missing values when aggregating, it'll have 33 missing observations.
 - Around 4.3% missing data.
@@ -207,7 +209,7 @@ ggplot(data = as.data.frame(skips)) +
   theme_bw()
 ```
 
----
+----
 
 ```{r}
 imputedWeek <- cbind(weekData)
@@ -223,7 +225,7 @@ ggplot() +
   theme_bw()
 ```
 
----
+---=--
 
 - It has the same problem when the sequence of missing data is to big.
 - Again, if there is more than 5 missing weeks, it will be used k = 16, if it's less, it'll be k = 4.
@@ -245,7 +247,7 @@ ggplot() +
   theme_bw()
 ```
 
----
+----
 
 ```{r}
 ggplot() +
@@ -263,7 +265,7 @@ ggplot() +
 
 - Metric to be minimized: MAE = $\dfrac{1}{n}\sum_n |y_t - \hat{y}_t|$.
 - Rolling window of 2 years (730 days).
-- Prediction of the next 7 ddays.
+- Prediction of the next 7 days.
 - First: Test if there is tendency with Wald-Wolfowitz runs test.
   - For every 2 years window, the p-value is smaller than $1e-3$.
 - Second: Fitting of different models and evaluation of MAE error.
@@ -287,8 +289,8 @@ plot(decompose(trainDaily.ts))
 
 ```{r}
 par(mfrow = c(1, 2))
-acf(trainDaily.ts[1:730], main = "ACF on subset of train data")
-pacf(trainDaily.ts[1:730], main = "PACF on subset of train data")
+acf(trainDaily.ts[1:730], main = "ACF on subset of train data", lag.max = 365)
+pacf(trainDaily.ts[1:730], main = "PACF on subset of train data", lag.max = 365)
 ```
 
 ----
@@ -302,12 +304,11 @@ pacf(trainDaily.ts[1:730], main = "PACF on subset of train data")
 ----
 
 - Process:
-  - For each model:
-    - For each 2 years window:
-      - Fit model.
-      - Generate predictions of next 7 days.
-      - Compute mean of residuals for that window.
-    - Compute MAE for model as the mean of residuals.
+  - 1. For each model, run a 2 years window, for each:
+    - Fit model.
+    - Generate predictions of next 7 days.
+    - Compute mean of residuals for that window.
+  - 2. Compute MAE for model as the mean of residuals.
   
 ----
 
@@ -356,7 +357,7 @@ legend("topright", legend=c("Predictions", "Real values", "Pred interval"), col=
 - Rolling window of 2 years (104 weeks), by skiping 4 weeks.
 - Prediction of the next 4 weeks.
 - First: Test if there is tendency with Wald-Wolfowitz runs test.
-  - For every 2 years window, the p-value is smaller than $1e-3$.
+  - For almost every 2 years window, the p-value is bigger than 0.1.
 - Second: Fitting of different models and evaluation of MAE error.
 
 ```{r}
@@ -364,14 +365,6 @@ trainWeekly <- read.csv("trainWeekly.csv")
 trainWeekly$Date.Local <- as.Date(trainWeekly$Date.Local)
 startDate <- trainWeekly$Date.Local[1]
 trainWeekly.ts <- ts(data = trainWeekly$O3.Mean, start = c(2001, format(startDate, "%U")), frequency = 52)
-tend <- function(x){
-  p <- runs.test(x)
-  p$p.value
-}
-
-tend.w <- rollapply(trainWeekly.ts, width = 104, FUN = tend, align = "left")
-trainWeekly$month <- as.factor(format(trainWeekly$Date.Local, format = "%m"))
-trainWeekly$ind <- seq(1, length(trainWeekly$Date.Local), 1)
 ```
 
 ## Choice of models - trend
@@ -384,19 +377,18 @@ plot(decompose(trainWeekly.ts))
 
 ```{r}
 par(mfrow = c(1, 2))
-acf(trainWeekly.ts[1:104], main = "ACF on subset of train data")
-pacf(trainWeekly.ts[1:104], main = "PACF on subset of train data")
+acf(trainWeekly.ts[1:104], main = "ACF on subset of train data", lag.max = 52)
+pacf(trainWeekly.ts[1:104], main = "PACF on subset of train data", lag.max = 52)
 ```
 
 ----
 
-- Naive model: the next 4 weeks are predict as the mean of the last 4 weeks.
+- Baseline model: the next 4 weeks are predict as the mean of the last 4 weeks.
 - Seasonal model: linear regression on seasonal dummies variable, each month is a factor.
 - Linear model: linear regression on seasonal dummies and time index.
 - Poly 2 model: linear regression on seasonal dummies and time index with degree 1 and 2.
 - Poly 3 model: linear regression on seasonal dummies and time index with degree 1, 2, and 3.
-- Holt model with trend.
-- Holt Winters model with trend and seasonality (multiplicative and addtive).
+- Holt Winters model without trend and with seasonality (multiplicative and additive).
 - ARMA(1, 0) model.
 
 ----
@@ -407,133 +399,76 @@ pacf(trainWeekly.ts[1:104], main = "PACF on subset of train data")
     - Generate predictions of next 4 weeks.
   - 2. With predictions for every week, compute residuals $r_t = y_t - \hat{y}_t$.
   - 3. With residuals, compute MAE.
+    - We group the predictions by each window, in this subsets, we compute the MAE of the 4 weeks predicted, than, we compute the mean of the MAE for all windows.
+    - We also group the predictions by the numbers of weeks after the last observation, that range from 1 to 4, and compute the MEAN for each of this subset.
   
 ----
 
 - Results:
-  - Sazonal: 0.003903618
-  - Linear: 0.004032514
-  - Poly 2: 0.004171369
-  - Arma(1, 0): 0.004568415
-  - Poly 3: 0.004739532
-  - Holt: 0.004885386
-  - HoltWinters additive: 0.005008383 
-  - HoltWinters multiplicative: 0.005085043 
-  - Naive: 0.005122260
+  - Seasonal: 0.003887602
+  - Linear: 0.004033049
+  - Poly 2: 0.004148709
+  - Arma(1, 0): 0.004695954
+  - Poly 3: 0.004760530
+  - HoltWinters additive: 0.005016573
+  - HoltWinters multiplicative: 0.005106128
+  - Baseline: 0.005218411
   
+----
 
 ```{r}
-predictions <- data.frame()
-
-for(i in seq(1, 508, 4)){
-  #variables
-  o3 <- trainWeekly$O3.Mean[i:(i+103)]
-  startDate <- trainWeekly$Date.Local[i]
-  o3.ts <- ts(o3, frequency = 52, start = c(format(startDate, "%Y"), format(startDate, "%U")))
-  ind <- trainWeekly$ind[i:(i+103)]
-  month <- trainWeekly$month[i:(i+103)]
-  
-  #models
-  #linear regression
-  model.sazonal <- lm(o3~month)
-  model.sazonal_linear <- lm(o3~ind+month)
-  model.sazonal_poly2 <- lm(o3~poly(ind, 2) + month)
-  model.sazonal_poly3 <- lm(o3~poly(ind, 3) + month)
-  
-  #o3.test <- o3 - model.sazonal$fitted.values
-  
-  #param <- optim(c(0.1, 0.1), fn = optim_holt, gr = "L-BFGS-B")
-  #holt method
-  model.holt <- holt(o3.ts, h = 4)
-  
-  #holt winters
-  model.hw_add <- HoltWinters(o3.ts, seasonal = "additive")
-  model.hw_mul <- HoltWinters(o3.ts, seasonal = "mult")
-  
-  #arma
-  model.arma <- arima(o3.ts, order = c(1, 0 ,0))
-  #model.arma <- auto.arima(o3.ts)
-  
-  newdata = data.frame(ind = (i+104):(i+107), 
-                        month = trainWeekly$month[(i+104): (i+107)])
-  
-  #prediction
-  pred.naive <- rep(mean(o3[(length(o3)-4):length(o3)]), 4)
-  pred.sazonal <- predict(model.sazonal, newdata = newdata)
-  pred.linear <- predict(model.sazonal_linear, newdata = newdata)
-  pred.poly_2 <- predict(model.sazonal_poly2, newdata = newdata)
-  pred.poly_3 <- predict(model.sazonal_poly3, newdata = newdata)
-  pred.holt <- coredata(model.holt$mean)
-  pred.hw_add <- coredata(forecast(model.hw_add, h = 4)$mean)
-  pred.hw_mul <- coredata(forecast(model.hw_mul, h = 4)$mean)
-  pred.arma <- coredata(forecast(model.arma, h = 4)$mean)
-  
-  #updating dataframe of predictions  
-  temp <- data.frame(Date.Local = trainWeekly$Date.Local[(i+104): (i+107)],
-                     pred.naive = pred.naive,
-                     pred.sazonal = pred.sazonal,
-                     pred.linear = pred.linear,
-                     pred.poly_2 = pred.poly_2,
-                     pred.poly_3 = pred.poly_3,
-                     pred.holt = pred.holt,
-                     pred.hw_add = pred.hw_add,
-                     pred.hw_mul = pred.hw_mul,
-                     pred.arma = pred.arma,
-                     real = trainWeekly$O3.Mean[(i+104): (i+107)])
-  
-  predictions <- rbind(predictions, temp)
-}
-
 #-------
 #calculating residuals
-residuals <- data.frame(naive = predictions$pred.naive - predictions$real,
-                        sazonal = predictions$pred.sazonal - predictions$real,
-                        linear = predictions$pred.linear - predictions$real,
-                        poly_2 = predictions$pred.poly_2- predictions$real,
-                        poly_3 = predictions$pred.poly_3- predictions$real,
-                        holt = predictions$pred.holt- predictions$real,
-                        hw_add = predictions$pred.hw_add- predictions$real,
-                        hw_mul = predictions$pred.hw_mul - predictions$real,
-                        arma_10 = predictions$pred.arma - predictions$real)
+residuals <- read.csv("auxRes.csv")
+library(dplyr)
 aux <- function(x){
   return(mean(abs(x)))
 }
+
+#residuals by day prediction
+residuals.mae <- residuals %>% group_by(day) %>% summarise_all(aux)
+residuals.mae[, c(-10, -11)]
+
 ```
 
 ## Residuals
 
 ```{r}
-acf(residuals$sazonal, main = "Sazonal model  residuals ACF")
+auxPred <- read.csv("auxPred.csv")
+acf(auxPred$sazonal, main = "ACF of Sazonal model residuals on training data ", xlim = c(0, 52), lag.max = 52)
 ```
 
 ----
 
 ```{r}
-qqPlot(residuals$sazonal, main = "QQPlot of sazonal model residuals", ylab = "Residual")
+qqPlot(auxPred$sazonal, main = "QQPlot of sazonal model residuals", ylab = "Residual")
 ```
 
 ----
 
 ```{r}
-acf(residuals$linear, main = "Linear model  residuals ACF")
+acf(auxPred$linear, main = "ACF of Linear model residuals on training data", xlim = c(0, 52), lag.max=  52)
 ```
+
 
 ----
 
 ```{r}
-qqPlot(residuals$linear, main = "QQPlot of linear model residuals", ylab = "Residual")
+qqPlot(auxPred$linear, main = "QQPlot of linear model residuals", ylab = "Residual")
 ```
 
 
 ## Evaluating on test data
 
-- MAE: 0.003438587
+- MAE:  0.003476891
+- MAE by day: 1 - 0.003450016; 2 - 0.003388719; 3 - 0.003502532; 4 - 0.003566297
+
 ```{r}
 testWeekly <- read.csv("testWeekly.csv")
 testWeekly$Date.Local <- as.Date(testWeekly$Date.Local)
 testWeekly$month <- as.factor(format(testWeekly$Date.Local, format = "%m"))
 predictions.test <- data.frame()
-for(i in seq(1, 52, 4)){
+for(i in seq(1, 49)){
   #variables
   o3 <- testWeekly$O3.Mean[i:(i+103)]
   startDate <- testWeekly$Date.Local[i]
@@ -547,19 +482,47 @@ for(i in seq(1, 52, 4)){
                      pred = pred$mean,
                      low = pred$lower[,2],
                      up = pred$upper[,2],
-                     real = testWeekly$O3.Mean[(i+104): (i+107)])
+                     real = testWeekly$O3.Mean[(i+104): (i+107)],
+                     ind = i,
+                     day = seq(1, 4))
   predictions.test <- rbind(predictions.test, temp)
   
 }
-residuals.test <- predictions.test$pred - predictions.test$real
-
+residuals.test <- data.frame(residuals = predictions.test$pred - predictions.test$real,
+                             ind = predictions.test$ind, day = predictions.test$day)
 startDate <- as.Date("2015-05-03")
 endDate <- as.Date("2016-04-24")
 
-plot(testWeekly$Date.Local, testWeekly$O3.Mean, type = 'l',  xlab = ("Date"), ylab = "O3 mean",
-     xlim = c(startDate, endDate), main = "Sazonal model of O3 weekly mean")
-polygon(c(predictions.test$Date.Local, rev(predictions.test$Date.Local)),
-        c(predictions.test$low, rev(predictions.test$up)), col = rgb(0, 0, 0.8, 0.3))
-lines(testWeekly$Date.Local, testWeekly$O3.Mean)
-lines(predictions.test$Date.Local, predictions.test$pred, col = 'red')
+par(mfrow = c(2, 2))
+p1 <- predictions.test %>% filter(day == 1)
+plot(p1$Date.Local, p1$pred, type = 'l',  xlab = ("Date"), ylab = "O3 mean",
+     xlim = c(startDate, endDate), ylim = c(0.005, 0.045), main = "Predictions for 1st week")
+polygon(c(p1$Date.Local, rev(p1$Date.Local)),
+        c(p1$low, rev(p1$up)), col = rgb(0, 0, 0.8, 0.3))
+lines(p1$Date.Local, p1$real)
+lines(p1$Date.Local, p1$pred, col = 'red')
+
+p1 <- predictions.test %>% filter(day == 2)
+plot(p1$Date.Local, p1$pred, type = 'l',  xlab = ("Date"), ylab = "O3 mean",
+     xlim = c(startDate, endDate),  ylim = c(0.005, 0.045), main = "Predictions for 2nd week")
+polygon(c(p1$Date.Local, rev(p1$Date.Local)),
+        c(p1$low, rev(p1$up)), col = rgb(0, 0, 0.8, 0.3))
+lines(p1$Date.Local, p1$real)
+lines(p1$Date.Local, p1$pred, col = 'red')
+
+p1 <- predictions.test %>% filter(day == 3)
+plot(p1$Date.Local, p1$pred, type = 'l',  xlab = ("Date"), ylab = "O3 mean",
+     xlim = c(startDate, endDate),  ylim = c(0.005, 0.045),main = "Predictions for 3rd week")
+polygon(c(p1$Date.Local, rev(p1$Date.Local)),
+        c(p1$low, rev(p1$up)), col = rgb(0, 0, 0.8, 0.3))
+lines(p1$Date.Local, p1$real)
+lines(p1$Date.Local, p1$pred, col = 'red')
+
+p1 <- predictions.test %>% filter(day == 4)
+plot(p1$Date.Local, p1$pred, type = 'l',  xlab = ("Date"), ylab = "O3 mean",
+     xlim = c(startDate, endDate),  ylim = c(0.005, 0.045), main = "Predictions for 4th week")
+polygon(c(p1$Date.Local, rev(p1$Date.Local)),
+        c(p1$low, rev(p1$up)), col = rgb(0, 0, 0.8, 0.3))
+lines(p1$Date.Local, p1$real)
+lines(p1$Date.Local, p1$pred, col = 'red')
 ```
