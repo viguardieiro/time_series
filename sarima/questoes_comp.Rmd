@@ -1,0 +1,183 @@
+---
+title: "Questão 2 e 3"
+author: "Giovani Valdrighi"
+date: "23/11/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Questão 2 
+
+## Análise da série
+
+Iremos resolver juntamente os itens **a)**, **b)** e **c)**, para isso iremos plotar os dados e suas diferentes diferenciações. Apesar de o enúnciado falar para analisar os lags 4, vamos utilizar os lags 12, pois esse é o período da série de consumo.
+
+```{r, warning = FALSE}
+library(readxl)
+library(tseries)
+library(magrittr)
+library(zoo)
+library(forecast)
+library(fpp2)
+
+CONSUMO <- read_excel('CONSUMO.XLS')
+consumo <- ts(CONSUMO$consumo, start = c(1984), frequency = 12)
+
+par(mfrow = c(2, 2))
+plot(consumo, main = "Series consumo")
+diff(consumo) %>% plot(main = "Series diff(consumo)")
+diff(consumo, lag = 12) %>%  plot(main = "Series diff(consumo, 12)")
+diff(consumo, lag = 12) %>% diff() %>% plot(main = "Series diff(diff(consumo, 12))")
+```
+
+Além disso, também vamos analisar a ACF e PACF da série.
+
+```{r}
+par(mfrow = c(2, 2))
+acf(consumo, lag.max = 48)
+diff(consumo) %>% acf(lag.max = 48, main = "Series diff(consumo)")
+diff(consumo, lag = 12) %>%  acf(lag.max = 48, main = "Series diff(consumo, 12)")
+diff(consumo, lag = 12) %>% diff() %>% acf(lag.max = 48, main = "Series diff(diff(consumo, 12))")
+```
+
+```{r}
+#PACFs
+par(mfrow = c(2, 2))
+## Z_t
+pacf(consumo, lag.max = 48)
+
+## \Delta Z_t
+diff(consumo) %>% pacf(lag.max = 48, main = "Series diff(consumo)")
+
+## \Delta_4 Z_t
+diff(consumo, lag = 12) %>%  pacf(lag.max = 48, main = "Series diff(consumo, 12)")
+
+## \Delta \Delta_z
+diff(consumo, lag = 12) %>% diff() %>% pacf(lag.max = 48, main = "Series diff(diff(consumo, 12))")
+```
+
+Pela análise dos gráficos das séries diferenciadas podemos ver que apesar da série não apresentar uma clara tendência, os períodos de 12 anos apresentam alguma tendência, o que dá a entender que devemos utilizar $d = 0$ e $D= 1$. Olhando para a ACF, vemos que os lags sazonais caem lentamente, o que indica um modelo $AR$ sazonal, o lag sinificativo da PACF é 1,2 e talvez o 3. Os lags não sazonais caem lentamente na ACF e rápido na PACF, o que indica um modelo $AR$ com lag 1 signficante. 
+
+Agora para os items **d)** e **e)**, vamos calcular os parâmetros de alguns modelos selecionados e avaliar os resíduos. O modelo que iremos considerar inicialmente é $SARIMA (0, 0, 1)(0, 1, 1)$. Começando com o primeiro modelo:
+
+```{r}
+mod1 <- Arima(consumo, order = c(0, 0, 1), seasonal = c(0, 1, 1))
+summary(mod1)
+```
+
+```{r}
+mod1 %>% checkresiduals()
+```
+
+Vemos que a ACF dos resíduos é altamente correlacionada, estamos ignorando algum fator regressivo.
+
+```{r}
+mod2 <- Arima(consumo, order = c(1, 0, 1), seasonal = c(0, 1, 1))
+summary(mod2)
+```
+
+```{r}
+mod2 %>% checkresiduals()
+```
+
+Vemos que os resíduos se assemelham a um ruído normal, apenas com o lag 12 significativo. Podemos testar aumentar o termo regressivo sazonal.
+
+```{r}
+mod3 <- Arima(consumo, order = c(1, 0, 1), seasonal = c(1, 1, 1))
+summary(mod3)
+```
+
+```{r}
+mod3 %>% checkresiduals()
+```
+
+Vamos comparar com o modelo da função auto.Arima.
+
+```{r}
+mod4 <- auto.arima(consumo)
+summary(mod4)
+```
+Vemos que o modelo considerado pelo auto.Arima é o $SARIMA(1,0, 1)(0, 1, 1)$, que também é o nosso modelo que obtive o menor AIC, vamos utilizar dele. Para o item **f)** vamos fazer a previsão do ano seguinte.
+
+```{r}
+plot(forecast(mod3, h = 12))
+```
+## Questão 3
+
+Iremos agora modelar a série Auscafe que contém os valores mensais gastos em cafés e restaurantes na Austrália.
+
+```{r}
+plot(auscafe, main = "Monthly Expenditure On Eating Out In Australia")
+```
+
+Além de ser notável que a série possui tendência, vemos que a série precisa ter a variância estabilizada, para isso vamos computar o lambda da transformação de BoxCox.
+```{r}
+lambda <- BoxCox.lambda(auscafe)
+lambda
+```
+Agindo de forma semelhante aos dados anteriores, vamos analisar a série diferenciada com lag 1 e com lag 12.
+
+```{r}
+par(mfrow = c(2, 2))
+auscafe %>% BoxCox(lambda) %>%  plot(main = "Auscafe")
+auscafe %>% BoxCox(lambda) %>% diff() %>% plot(main = "Auscafe diff 1")
+auscafe %>% BoxCox(lambda) %>% diff(12) %>% plot(main = "Auscafe diff 12")
+auscafe %>% BoxCox(lambda) %>% diff(12) %>% diff() %>% plot(main = "Auscafe diff(diff 12)")
+
+```
+Também iremos analisar as ACF e PACF.
+
+```{r}
+par(mfrow = c(2, 2))
+auscafe %>% BoxCox(lambda) %>% acf(lag.max = 48)
+auscafe %>% BoxCox(lambda) %>% diff() %>% acf(lag.max = 48, main = "Series diff(auscafe)")
+auscafe %>% BoxCox(lambda) %>% diff(lag = 12) %>%  acf(lag.max = 48, main = "Series diff(auscafe, 12)")
+auscafe %>% BoxCox(lambda) %>% diff(lag = 12) %>% diff() %>% acf(lag.max = 48, main = "Series diff(diff(auscafe, 12))")
+```
+
+```{r}
+par(mfrow = c(2, 2))
+auscafe %>% BoxCox(lambda) %>% pacf(lag.max = 48)
+auscafe %>% BoxCox(lambda) %>% diff() %>% pacf(lag.max = 48, main = "Series diff(auscafe)")
+auscafe %>% BoxCox(lambda) %>% diff(lag = 12) %>%  pacf(lag.max = 48, main = "Series diff(auscafe, 12)")
+auscafe %>% BoxCox(lambda) %>% diff(lag = 12) %>% diff() %>% pacf(lag.max = 48, main = "Series diff(diff(auscafe, 12))")
+```
+Com a análise dos gráficos, vemos inicialmente que devemos utilizar $d = 1$ e $D=1$ pois a série apresenta tendência mensal e também anual. Vemos que a ACF tanto sazonal quando não sazonal decresce gradulmente, enquanto as PACF decrescem mais rapidamente. Vamos considerar inicialmente o modelo $SARIMA(0, 1, 1)(0, 1, 1)$.
+
+```{r}
+mod1 <- Arima(auscafe, order = c(0, 1, 1), seasonal = c(0, 1, 1), lambda = lambda)
+summary(mod1)
+```
+```{r}
+checkresiduals(mod1)
+```
+Note que a ACF dos resíduos apresenta alguns lags significativos, vamos tentar inserir um termo regressivo sazonal.
+
+
+```{r}
+mod2 <- Arima(auscafe, order = c(0, 1, 1), seasonal = c(1, 1, 1), lambda = lambda)
+summary(mod2)
+```
+
+```{r}
+checkresiduals(mod2)
+```
+
+Comparando agora com o resultado do método auto.Arima.
+
+```{r}
+mod3 <- auto.arima(auscafe, lambda = lambda)
+summary(mod3)
+```
+```{r}
+checkresiduals(mod3)
+```
+Vemos que diferentemente do que modelamos, o método auto.Arima obtive $p = 1$ e $P = 2$ sendo o maior AIC obtido. Vamos utilizar então do modelo $SARIMA(1, 0, 1)(2, 1, 1)$ para prever o próximo ano.
+
+```{r}
+plot(forecast(mod3, h = 12), include =  48)
+```
+
