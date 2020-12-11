@@ -15,6 +15,8 @@ library(dplyr)
 library(lmtest)
 library(pander)
 library(imager)
+library(tsoutliers)
+library(TSA)
 ```
 
 # Total Business Sales FRED
@@ -26,6 +28,7 @@ library(imager)
 
 ```{r}
 data <- read.csv('TOTBUSSMNSA.csv')
+data <- transform(data, DATE = as.Date(DATE))
 title = 'Total Business Sales FRED (FED St. Louis Economics Research)'
 #data before intervention
 pre_intervention <- data %>% filter(DATE < as.Date("2008-09-01"))
@@ -266,8 +269,48 @@ lines(model5$fitted, col = 'red', lwd = 1.5)
 legend("topleft", legend=c("Predictions", "Real values"), col=c('red','black'), lty = 1:1, cex=0.8)
 ```
 
+---
+
+# Predictive model
+
+```{r}
+# train data
+train_data <- data %>% filter(DATE < as.Date("2013-01-01"))
+FRED_train <- ts(train_data$TOTBUSSMNSA,
+           start = c(2002, 1),
+           frequency = 12)
+
+train_data_12 <- data %>% filter(DATE < as.Date("2014-01-01"))
+FRED_train_12 <- ts(train_data_12$TOTBUSSMNSA,
+           start = c(2002, 1),
+           frequency = 12)
+```
+
+
+```{r}
+interval_const_eff_train <-  1*((seq_along(train_data$DATE) >= 79 & seq_along(train_data$DATE) <= (79 + 3)))
+model6_train <- Arima(FRED_train, order = c(2, 1, 1), seasonal = c(2, 1, 1), xreg = interval_const_eff_train, lambda = lambda)
+summary(model6_train)
+```
 
 ---
 
+## Predict 12 months
 
+
+```{r}
+plot(forecast(model6_train, lambda =lambda, xreg = rep(1, each=12), biasadj = TRUE), main = "FRED series x Forecast with intervention model")
+lines(FRED_train_12)
+legend("topleft", legend=c("Forecast mean",  "90%", "95%", "Real values"), col=c('blue','#596DD5', "#D5DBFF" ,'black' ), lty = 1:1, cex=0.8)
+```
+
+---
+
+## Predict 24 months
+
+```{r}
+plot(forecast(model6_train, lambda =lambda, xreg = rep(1, each=24), biasadj = TRUE), main = "FRED series x Forecast with intervention model")
+lines(FRED)
+legend("topleft", legend=c("Forecast mean",  "90%", "95%", "Real values"), col=c('blue','#596DD5', "#D5DBFF" ,'black' ), lty = 1:1, cex=0.8)
+```
 
