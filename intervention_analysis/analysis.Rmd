@@ -252,3 +252,45 @@ plot(FRED, lwd = 1.5, main = "FRED Real x Predicted with temporary constant effe
 lines(model5$fitted, col = 'red', lwd = 1.5)
 legend("topleft", legend=c("Predictions", "Real values"), col=c('red','black'), lty = 1:1, cex=0.8)
 ```
+
+
+---
+
+## Optimizing the duration of the effect
+
+- As the constant permanent effect doesn't show good results, and the temporary effect show significance, we can evaluate the significance of a set o values $m$, with $h_t = I((jul2008 + m)\geq t \geq jul2008)\delta_0$, that is, the effect will be the constant $\delta_0$ for $m$ months after july of 2008. For each value, we keep the AIC and will look at the $m$ value that minimize the AIC.
+
+- The duration that minimize the AIC is $m = 3$.
+
+```{r}
+m <- seq(1, 72)
+m_AIC <- rep(NA, 72)
+for(i in seq_along(m)){
+	interval_const_eff <-  1*((seq_along(data$DATE) >= 79 & seq_along(data$DATE) <= (79 + i)))
+	model6_eval <- Arima(FRED, order = c(2, 1, 1), seasonal = c(2, 1, 1), xreg = interval_const_eff, lambda = lambda)
+	m_AIC[i] = model6_eval$aic
+}
+
+plot(m_AIC, main = "AIC values for each length of temporary effect", xlab = "Duration of effect in months", ylab = "AIC", lwd = 1.4)
+```
+
+
+---
+
+```{r}
+interval_const_eff <-  1*((seq_along(data$DATE) >= 79 & seq_along(data$DATE) <= (79 + 3)))
+model6 <- Arima(FRED, order = c(2, 1, 1), seasonal = c(2, 1, 1), xreg = interval_const_eff, lambda = lambda)
+summary(model6)
+```
+
+---
+
+```{r}
+par(mfrow = c(1, 2))
+plot(FRED)
+lines(model6$fitted, col = 'red')
+legend("topleft", legend=c("Predictions", "Real values"), col=c('red','black'), lty = 1:1, cex=0.8)
+
+plot(ts(interval_const_eff, start = c(2002, 1), frequency = 12), ylab = "X_t", main = "Transfer function")
+```
+
