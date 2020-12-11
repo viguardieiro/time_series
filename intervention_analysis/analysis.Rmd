@@ -13,25 +13,33 @@ library(ggplot2)
 library(forecast)
 library(dplyr)
 library(lmtest)
+library(pander)
+library(imager)
 ```
 
 # Total Business Sales FRED
 
-- Data from 01/2002 to 12/2012, intervention on 07/2008.
+- Data from 01/2002 to 12/2012, intervention on 07/2008. The period of 01/2013 to 12/2014 will be used as model validation.
+- In 2008 we have a international banking crisis, strongly affecting sales on the US.
 
+---
 
 ```{r}
 data <- read.csv('TOTBUSSMNSA.csv')
 title = 'Total Business Sales FRED (FED St. Louis Economics Research)'
 #data before intervention
-pre_intervention <- data %>% filter(DATE < as.Date("2008-08-01"))
+pre_intervention <- data %>% filter(DATE < as.Date("2008-09-01"))
+fred_FIT <- data %>% filter(DATE < as.Date("2013-01-01"))
 FRED_pre <- ts(pre_intervention$TOTBUSSMNSA,
            start = c(2002, 1),
            frequency = 12)
 
 
+#fit data
+FRED <- ts(fred_FIT$TOTBUSSMNSA, start = c(2002, 1), frequency = 12)
+
 #all data
-FRED <- ts(data$TOTBUSSMNSA, start = c(2002, 1), frequency = 12)
+FRED_all <- ts(data$TOTBUSSMNSA, start = c(2002, 1), frequency = 12)
 #check if variance is the same
 autoplot(FRED, main = title) +
   scale_x_continuous(breaks = scales::extended_breaks(10))
@@ -41,12 +49,12 @@ autoplot(FRED, main = title) +
 
 # Variance stabilization
 
-- With BoxCox, the lambda is 0.1370143.
+- With BoxCox transformation, the lambda is 0.1370143.
 
 ```{r}
 
 #series need stabilization
-lambda <- BoxCox.lambda(FRED)
+lambda <- BoxCox.lambda(FRED_all)
 
 #data after stabilization
 autoplot(BoxCox(FRED, lambda), main = title) +
@@ -59,7 +67,7 @@ autoplot(BoxCox(FRED, lambda), main = title) +
 
 # SARIMA pre-intervention
 
-- Model with data until 06/2008. The plots and the models will use the transformed series.
+- Model with data until 07/2008. The plots and the models will use the transformed series.
 
 ```{r}
 autoplot(BoxCox(FRED_pre, lambda), main = title) + 
@@ -126,45 +134,48 @@ FRED_pre %>% BoxCox(lambda = lambda) %>%diff(lag = 12) %>% pacf(main = "diff(12)
 
 ## SARIMA(2, 1, 1)(3,0 ,1)
 
-```{r}
+```{r }
 model1 <- Arima(FRED_pre, order = c(2, 1,1), seasonal = c(3, 0, 1), lambda = lambda)
-print(summary(model1))
+myjpg <- load.image('image1.jpg')
+plot(myjpg,  xaxt='n', ann=FALSE, axes = FALSE)
 ```
 
 ---
 
 ```{r}
-checkresiduals(model1)
+checkresiduals(model1, test = FALSE)
 ```
 
 ---
 
 ## SARIMA(2, 1, 1)(2,0 ,1)
 
-```{r, tidy=TRUE}
+```{r }
 model2 <- Arima(FRED_pre, order = c(2, 1,1), seasonal = c(2, 0, 1), lambda = lambda)
-print(summary(model2))
+myjpg <- load.image('image2.jpg')
+plot(myjpg,  xaxt='n', ann=FALSE, axes = FALSE)
 ```
 
 ---
 
 ```{r}
-checkresiduals(model2)
+checkresiduals(model2, test = FALSE)
 ```
 
 ---
 
 ## SARIMA(2, 1, 1)(2,1 ,1)
 
-```{r, tidy=TRUE}
+```{r }
 model3 <- Arima(FRED_pre, order = c(2, 1,1), seasonal = c(2, 1, 1), lambda = lambda)
-print(summary(model3))
+myjpg <- load.image('image3.jpg')
+plot(myjpg,  xaxt='n', ann=FALSE, axes = FALSE)
 ```
 
 ---
 
 ```{r}
-checkresiduals(model3)
+checkresiduals(model3, test = FALSE)
 ```
 
 
@@ -185,7 +196,7 @@ legend("topleft", legend=c("Predictions", "Real values"), col=c('red','black'), 
 - We now look on how our model says that the series should be without the intervention, predicting the next six years after july 2008.
 
 ```{r}
-plot(forecast(model3, h = 72, lambda =lambda, biasadj = TRUE), main = "FRED series x Forecast of pre-intervention model")
+plot(forecast(model3, h = 48, lambda =lambda, biasadj = TRUE), main = "FRED series x Forecast of pre-intervention model")
 lines(FRED)
 legend("topleft", legend=c("Forecast mean",  "90%", "95%", "Real values"), col=c('blue','#596DD5', "#D5DBFF" ,'black' ), lty = 1:1, cex=0.8)
 ```
@@ -197,17 +208,18 @@ legend("topleft", legend=c("Forecast mean",  "90%", "95%", "Real values"), col=c
 - For the first intervention model we will define $h_t = I(t > jul2008)\delta_0$, so there will be a permanent effect equal to $\delta_0$ after july of 2008.
 - The estimated $\delta_0$ value is $0.0759$ with s.e. $0.1385$, so the interval includes $0$.
 
-```{r}
+```{r }
 #julh of 2008 is the 79 row
-permanent_const_eff <-  1*(seq_along(data$DATE) >= 79)
+permanent_const_eff <-  1*(seq_along(fred_FIT$DATE) >= 79)
 model4 <- Arima(FRED, order = c(2, 1, 1), seasonal = c(2, 1, 1), xreg = permanent_const_eff, lambda = lambda)
-summary(model4)
+myjpg <- load.image('image4.jpg')
+plot(myjpg,  xaxt='n', ann=FALSE, axes = FALSE)
 ```
 
 ---
 
 ```{r}
-checkresiduals(model4)
+checkresiduals(model4, test = FALSE)
 ```
 
 ---
@@ -225,11 +237,12 @@ legend("topleft", legend=c("Predictions", "Real values"), col=c('red','black'), 
 - Now for the intervention model we will define $h_t = I(t = jul2008)\delta_0$, so there will be a temporary effect equal to $\delta_0$ on july of 2008.
 - The estimated $\delta_0$ value is $0.1835$ with s.e. $0.1064$, so the interval doesn't include $0$.
 
-```{r}
+```{r }
 #julh of 2008 is the 79 row
-temporary_const_eff <-  1*(seq_along(data$DATE) == 79)
+temporary_const_eff <-  1*(seq_along(fred_FIT$DATE) == 79)
 model5 <- Arima(FRED, order = c(2, 1, 1), seasonal = c(2, 1, 1), xreg = temporary_const_eff, lambda = lambda)
-summary(model5)
+myjpg <- load.image('image5.jpg')
+plot(myjpg,  xaxt='n', ann=FALSE, axes = FALSE)
 ```
 
 ---
@@ -241,7 +254,7 @@ coeftest(model5)
 ---
 
 ```{r}
-checkresiduals(model5)
+checkresiduals(model5, test = FALSE)
 ```
 
 ---
@@ -256,41 +269,5 @@ legend("topleft", legend=c("Predictions", "Real values"), col=c('red','black'), 
 
 ---
 
-## Optimizing the duration of the effect
 
-- As the constant permanent effect doesn't show good results, and the temporary effect show significance, we can evaluate the significance of a set o values $m$, with $h_t = I((jul2008 + m)\geq t \geq jul2008)\delta_0$, that is, the effect will be the constant $\delta_0$ for $m$ months after july of 2008. For each value, we keep the AIC and will look at the $m$ value that minimize the AIC.
-
-- The duration that minimize the AIC is $m = 3$.
-
-```{r}
-m <- seq(1, 72)
-m_AIC <- rep(NA, 72)
-for(i in seq_along(m)){
-	interval_const_eff <-  1*((seq_along(data$DATE) >= 79 & seq_along(data$DATE) <= (79 + i)))
-	model6_eval <- Arima(FRED, order = c(2, 1, 1), seasonal = c(2, 1, 1), xreg = interval_const_eff, lambda = lambda)
-	m_AIC[i] = model6_eval$aic
-}
-
-plot(m_AIC, main = "AIC values for each length of temporary effect", xlab = "Duration of effect in months", ylab = "AIC", lwd = 1.4)
-```
-
-
----
-
-```{r}
-interval_const_eff <-  1*((seq_along(data$DATE) >= 79 & seq_along(data$DATE) <= (79 + 3)))
-model6 <- Arima(FRED, order = c(2, 1, 1), seasonal = c(2, 1, 1), xreg = interval_const_eff, lambda = lambda)
-summary(model6)
-```
-
----
-
-```{r}
-par(mfrow = c(1, 2))
-plot(FRED)
-lines(model6$fitted, col = 'red')
-legend("topleft", legend=c("Predictions", "Real values"), col=c('red','black'), lty = 1:1, cex=0.8)
-
-plot(ts(interval_const_eff, start = c(2002, 1), frequency = 12), ylab = "X_t", main = "Transfer function")
-```
 
